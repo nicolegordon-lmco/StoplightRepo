@@ -8,11 +8,11 @@ import xlsxwriter
 import string
 import datetime as dt
 
-def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
+def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, clin):
     letters = string.ascii_uppercase
     stoplight_data = stoplight_dict[clin]['Data'].copy()
     stoplight_change = stoplight_dict[clin]['Change_BL'].copy()
-    PI_sprint = f"{stoplight_data.columns[(sprint-1) * 2][:4]}.{sprint}"
+    PI_sprintCompleted = f"{stoplight_data.columns[(lastCompleteSprint-1) * 2][:4]}.{lastCompleteSprint}"
 
     for idx in stoplight_data.index:
         change = stoplight_change.loc[idx, 'Change Since BL']
@@ -41,7 +41,7 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
                'Sprint 1', 'Sprint 2', 'Sprint 3', 
                'Sprint 4', 'Sprint 5', 'Sprint 6 (Planning Sprint)',
                'Current Total Pts (Change Since PI Planning)',
-              f'Points Analysis (End Sprint {PI_sprint})']
+              f'Points Analysis (End Sprint {PI_sprintCompleted})']
 
     for idx, header in zip(merged_headers, headers):
         ws.write(idx, header, header_format)
@@ -57,7 +57,7 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
         if col % 2 == 1:
             subheader = 'Baseline'
         else:
-            if (col/2) <= sprint:
+            if (col/2) <= curSprint:
                 subheader = 'Actual'
             else:
                 subheader = 'Projected'
@@ -147,7 +147,7 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
             # Sprints 1-6
             if col in range(1,13):
                 # Col is <= current sprint and is actual/projected
-                if (col <= sprint*2) & (col % 2 == 0):
+                if (col <= curSprint*2) & (col % 2 == 0):
                     corr_BL_data = data_list[16*i + col - 2]
                     diff = cell_data - corr_BL_data
                     # On track/ahead
@@ -228,8 +228,8 @@ def create_excel(data, sprint, stoplight_dir,
                        f'Sprint {sprint}', title_format)
             
             data[sheet]['Sprint Metrics'].to_excel(writer, sheet_name=sheet,
-                                                   startrow=cumper_startrow, startcol=10) 
-            ws.set_column(10, 10, 60)
+                                                   startrow=cumper_startrow, startcol=num_cols_sum+2) 
+            ws.set_column(num_cols_sum+2, num_cols_sum+2, 60)
 
             # Round format
             round_format = wb.add_format({'num_format': '#,##0'})
@@ -242,8 +242,8 @@ def create_excel(data, sprint, stoplight_dir,
                 last_col_change = letters[num_cols_sum+2+num_cols_change]
                 # Changes since last week
                 data[sheet]['Changes Since Last Week'].to_excel(writer, sheet_name=sheet, 
-                                                                startrow=1 , startcol=10)   
-                ws.set_column(11, 20, 15)
+                                                                startrow=1 , startcol=num_cols_sum+2)   
+                ws.set_column(num_cols_sum+3, num_cols_sum+2+num_cols_change, 15)
                 
                 # Add header
                 ws.merge_range(f'{first_col_change}1:{last_col_change}1',
@@ -263,7 +263,7 @@ def create_excel(data, sprint, stoplight_dir,
         cat_format = wb.add_format({'align': 'left',
                                    'bold': False})
         ws.set_column(0, 0, 60, cat_format)
-        ws.set_column(1, 9, 10, cat_format)
+        ws.set_column(1, num_cols_sum, 10, cat_format)
 
         # Merge and add headers
         letters = string.ascii_uppercase
