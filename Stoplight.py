@@ -66,7 +66,7 @@ def main(curSprint, lastCompleteSprint, PI,
                                   f'Stoplight_Graphics_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}.xlsx')
     wb = xlsxwriter.Workbook(stoplight_file)
     for clin in clins:
-        create_stoplight_sheet(wb, stoplight_dict, curSprint, clin)
+        create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, clin)
     wb.close()
     
     return 
@@ -82,12 +82,27 @@ if __name__ == "__main__":
     # Get last completed sprint
     sprint_file = r"C:\Users\e439931\PMO\Stoplight\Sprints.xlsx"
     sprints = pd.read_excel(sprint_file, header=0)
-    today = dt.datetime.now()
+    today = dt.datetime.today()
     PI_sprint = sprints[(today > sprints.End)].iloc[-1].Sprint
     last_complete_sprint = PI_sprint.split('.')[-1]
     if last_complete_sprint == "IP":
         last_complete_sprint = 6
     PI = '.'.join(PI_sprint.split('.')[:2])
+
+    # Get current sprint
+    # get most recent tuesday
+    today = dt.datetime.today()
+    today_day = today.weekday()
+    if today_day < 1:
+        # it is monday
+        last_tuesday = today - dt.timedelta(days=6)
+    else:
+        # it is not monday
+        last_tuesday = today - dt.timedelta(days=today_num+1)
+    PI_sprint = sprints[((last_tuesday > sprints.Start) & (last_tuesday <= sprints.End))].iloc[0].Sprint
+    cur_sprint = PI_sprint.split('.')[-1]
+    if cur_sprint == "IP":
+        cur_sprint = 6
 
     description = ("A script that takes in the sprint number and the current, previous, and baseline Jira exports "
                     + "and computes calculations on the data. Outputs one spreadsheet with the Jira data"
@@ -102,7 +117,8 @@ if __name__ == "__main__":
                         help='Path to baseline Jira export')
     parser.add_argument('-sprint', 
                         help='INT: Current sprint number', 
-                        type=int)
+                        type=int,
+                        default=cur_sprint)
     parser.add_argument('-lastCompleteSprint', 
                         help='INT: Last complete sprint number', 
                         type=int,
