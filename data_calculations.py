@@ -32,9 +32,11 @@ def get_PI_Lookup(df, PILookup_df):
     for idx, date in zip(df['Index'], df['Planned Start Date']):
         if pd.isna(date):
             PI_lookup[idx] = np.nan
-        for i in PILookup_df.index:
-            if ((date >= PILookup_df.loc[i, 'Start']) & (date <= PILookup_df.loc[i, 'End'])):
-                PI_lookup[idx] = PILookup_df.loc[i, 'PI']
+        else: 
+            for i in PILookup_df.index:
+                if ((date >= PILookup_df.loc[i, 'Start']) & (date <= PILookup_df.loc[i, 'End'])):
+                    PI_lookup[idx] = PILookup_df.loc[i, 'PI']
+                    break
     return list(PI_lookup.values())
 
 def find_PI_sprint(string, pattern, PI=True):
@@ -61,9 +63,9 @@ def get_attributes(df, PILookup_df, feature_level=3):
 
     # Epic
     df['Epic'] = split_level(df, 
-                                      df['Issue Type'] == 'Portfolio Epic', 
-                                      lambda x: x[0], 
-                                      'No Epic')
+                            df['Issue Type'] == 'Portfolio Epic', 
+                            lambda x: x[0], 
+                            'No Epic')
 
     # Capability
     capability_temp = pd.DataFrame({'Index': df.Index,
