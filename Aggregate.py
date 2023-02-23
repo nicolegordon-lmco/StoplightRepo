@@ -64,7 +64,7 @@ def get_cum_metrics(pivot, epics, clins):
     
     return cum_sum, cum_per, CLIN_df
 
-def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
+def get_sprint_metrics(curSprint, lastCompleteSprint, pivot_cumsum,
                          baseline_cumsum, baseline_cumper, epics):
     # Current total
     cur_total = pivot_cumsum.iloc[:, -1].values
@@ -74,17 +74,24 @@ def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
     baseline_change = cur_total - baseline_total
     
     # Points expected
-    pattern = re.compile(fr'\d\d\.\d-S{sprint_num}')
+    last_pattern = re.compile(fr'\d\d\.\d-S{lastCompleteSprint}')
     col = (baseline_cumper.columns.to_series()
-           .apply(find_PI_sprint, args=(pattern,))
+           .apply(find_PI_sprint, args=(last_pattern,))
            .dropna().values[0])
     points_expected = (baseline_cumper.loc[epics, col] * cur_total)
     
     # Points completed
     col = (pivot_cumsum.columns.to_series()
-           .apply(find_PI_sprint, args=(pattern,))
+           .apply(find_PI_sprint, args=(last_pattern,))
            .dropna().values[0])
     points_completed = pivot_cumsum.loc[epics, col]
+
+    # Current completed
+    cur_pattern = re.compile(fr'\d\d\.\d-S{curSprint}')
+    col = (pivot_cumsum.columns.to_series()
+           .apply(find_PI_sprint, args=(cur_pattern,))
+           .dropna().values[0])
+    cur_points_completed = pivot_cumsum.loc[epics, col]
     
     # Delta
     delta = points_completed - points_expected
@@ -94,10 +101,12 @@ def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
                                      'Change Since BL': baseline_change,
                                      'Points Expected': points_expected,
                                      'Points Completed': points_completed,
-                                     'Delta Points': delta})
+                                     'Delta Points': delta,
+                                     'Current Completed': cur_points_completed})
+
     return sprint_metrics_df
 
-def get_aggregated_data(sprint_num, 
+def get_aggregated_data(curSprint, lastCompleteSprint, 
                         newDataFile, prevDataFile, 
                         baseDataFile, PILookupFile,
                         epics, clins, PI):
@@ -121,13 +130,11 @@ def get_aggregated_data(sprint_num,
     (baseline_cum_sum, baseline_cum_per, baseline_CLIN_df) = get_cum_metrics(baseline_pivot, epics, clins)
     
     # Get sprint metrics
-    cur_sprint_metrics = get_sprint_metrics(sprint_num, 
-                                            cur_pivot, baseline_pivot, 
+    cur_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, 
                                             cur_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
-    prev_sprint_metrics = get_sprint_metrics(sprint_num, 
-                                            prev_pivot, baseline_pivot, 
+    prev_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint,  
                                             prev_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
