@@ -13,7 +13,14 @@ def get_cumsum(pivot):
 
 def get_cumper(pivot, cum_sum, epics):
     # Total points in assigned sprint columns will be last column of the cumulative sum df
-    totals = (cum_sum.iloc[:, -1]
+    # plus the slipped points
+    if "Slip" in pivot.columns:
+        totals = cum_sum.iloc[:, -1] + pivot.Slip.drop('Grand Total')
+    else:
+        totals = cum_sum.iloc[:, -1]
+
+    # Reshape
+    totals = (totals
              .values
              .repeat(cum_sum.shape[1])
              .reshape(cum_sum.shape))
@@ -24,10 +31,14 @@ def get_clin(df, clin):
     clin_idx = df.index.to_series().apply(lambda x: clin in x)
     return df[clin_idx]
 
-def get_clin_per(cum_sum, clin):
-    # Only use assigned sprint columns
+def get_clin_per(cum_sum, pivot, clin):
+    # Only use assigned sprint columns, plus slip if applicable
     cur_clin = get_clin(cum_sum, clin)
-    total = cur_clin.iloc[:, -1].values.sum() 
+    if 'Slip' in pivot.columns:
+        cur_clin_slip = get_clin(pivot, clin).Slip
+        total = (cur_clin.iloc[:, -1] + cur_clin_slip).values.sum()
+    else:
+        total = cur_clin.iloc[:, -1].values.sum() 
     clin_per = get_clin(cum_sum, clin).sum() / total
     return clin_per
 
@@ -46,9 +57,8 @@ def get_cum_metrics(pivot, epics, clins):
     
     # CLIN breakout
     CLIN_df = pd.DataFrame()
-    clins = ['CLIN 2013', 'CLIN 2016', 'CLIN 2018']
     for clin in clins:
-        clin_per = get_clin_per(cum_sum, clin)
+        clin_per = get_clin_per(cum_sum, pivot, clin)
         CLIN_df[clin] = clin_per
     CLIN_df = CLIN_df.transpose()
     
@@ -102,7 +112,7 @@ def get_aggregated_data(sprint_num,
     cols = (changes_since_last_week.columns.to_series()
             .apply(find_PI_sprint, args=(pattern,))
             .dropna().values)
-    cols = np.append(cols, ['Grand Total'])
+    cols = np.append(cols, ['Slip', 'Grand Total'])
     changes_since_last_week = changes_since_last_week.loc[epics, cols]
     
     # Get cumulative metrics
