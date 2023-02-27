@@ -97,6 +97,15 @@ def get_sprint_metrics(curSprint, lastCompleteSprint, pivot, pivot_cumsum,
     
     # Delta
     delta = points_completed - points_expected
+
+    # Points remaining
+    pts_rem = cur_total - points_completed
+
+    # Velocity
+    vel = points_completed / lastCompleteSprint
+
+    # Sprints left
+    sprints_rem = pts_rem / vel
     
     # Data frame
     sprint_metrics_df = pd.DataFrame({'Current Total Pts': cur_total,
@@ -105,8 +114,11 @@ def get_sprint_metrics(curSprint, lastCompleteSprint, pivot, pivot_cumsum,
                                      'Points Completed': points_completed,
                                      'Delta Points': delta,
                                      'Current Completed': cur_points_completed})
+    remaining_sprint_metrics = pd.DataFrame({'Points Remaining': pts_rem,
+                                            'Velocity': vel, 
+                                            'Sprints Remaining': sprints_rem})
 
-    return sprint_metrics_df
+    return sprint_metrics_df, remaining_sprint_metrics
 
 def get_aggregated_data(curSprint, lastCompleteSprint, 
                         newDataFile, prevDataFile, 
@@ -132,26 +144,28 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
     (baseline_cum_sum, baseline_cum_per, baseline_CLIN_df) = get_cum_metrics(baseline_pivot, epics, clins)
     
     # Get sprint metrics
-    cur_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, cur_pivot,  
-                                            cur_cum_sum, baseline_cum_sum, 
-                                            baseline_cum_per,
-                                            epics)
-    prev_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, prev_pivot,
-                                            prev_cum_sum, baseline_cum_sum, 
-                                            baseline_cum_per,
-                                            epics)
+    cur_sprint_metrics, cur_rem_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, cur_pivot,  
+                                                            cur_cum_sum, baseline_cum_sum, 
+                                                            baseline_cum_per,
+                                                            epics)
+    prev_sprint_metrics, prev_rem_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, prev_pivot,
+                                                                prev_cum_sum, baseline_cum_sum, 
+                                                                baseline_cum_per,
+                                                                epics)
     # Summary dict
     tables = {'Current Pivot': {'Pivot': cur_pivot,
                                 'Changes Since Last Week': changes_since_last_week,
                                 'Cum Sum': cur_cum_sum,
                                'Cum Per': cur_cum_per,
                                'CLIN Per': cur_CLIN_df,
-                               'Sprint Metrics': cur_sprint_metrics},
+                               'Sprint Metrics': cur_sprint_metrics,
+                               'Remaining Metrics': cur_rem_metrics},
              'Previous Pivot': {'Pivot': prev_pivot,
                                 'Cum Sum': prev_cum_sum,
                                'Cum Per': prev_cum_per,
                                'CLIN Per': prev_CLIN_df,
-                               'Sprint Metrics': prev_sprint_metrics},
+                               'Sprint Metrics': prev_sprint_metrics,
+                               'Remaining Metrics': prev_rem_metrics},
              'Baseline Pivot': {'Pivot': baseline_pivot,
                                 'Cum Sum': baseline_cum_sum,
                                'Cum Per': baseline_cum_per,
