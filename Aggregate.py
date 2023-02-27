@@ -64,10 +64,12 @@ def get_cum_metrics(pivot, epics, clins):
     
     return cum_sum, cum_per, CLIN_df
 
-def get_sprint_metrics(curSprint, lastCompleteSprint, pivot_cumsum,
+def get_sprint_metrics(curSprint, lastCompleteSprint, pivot, pivot_cumsum,
                          baseline_cumsum, baseline_cumper, epics):
-    # Current total
-    cur_total = pivot_cumsum.iloc[:, -1].values
+    # Current total (Points in sprint plus slip)
+    cumsum_tot = pivot_cumsum.iloc[:, -1].values 
+    slip = pivot.Slip.drop(['Grand Total'])
+    cur_total = cumsum_tot + slip
     
     # Change since baseline
     baseline_total = baseline_cumsum.iloc[:, -1].values
@@ -130,11 +132,11 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
     (baseline_cum_sum, baseline_cum_per, baseline_CLIN_df) = get_cum_metrics(baseline_pivot, epics, clins)
     
     # Get sprint metrics
-    cur_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, 
+    cur_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, cur_pivot,  
                                             cur_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
-    prev_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint,  
+    prev_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, prev_pivot,
                                             prev_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
