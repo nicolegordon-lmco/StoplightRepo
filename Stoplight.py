@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     # Get current sprint
     # get most recent tuesday
-    today = dt.datetime.today()
+    today = dt.datetime.strptime(dt.datetime.today().date().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
     today_day = today.weekday()
     if today_day < 1:
         # it is monday
