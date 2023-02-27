@@ -98,6 +98,7 @@ if __name__ == "__main__":
     else:
         # it is not monday
         last_tuesday = today - dt.timedelta(days=today_day+1)
+    print(last_tuesday)
     PI_sprint = sprints[((last_tuesday > sprints.Start) & (last_tuesday <= sprints.End))].iloc[0].Sprint
     cur_sprint = PI_sprint.split('.')[-1]
     if cur_sprint == "IP":
