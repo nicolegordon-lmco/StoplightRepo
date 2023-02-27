@@ -97,6 +97,15 @@ def get_sprint_metrics(curSprint, lastCompleteSprint, pivot, pivot_cumsum,
     
     # Delta
     delta = points_completed - points_expected
+
+    # Points remaining
+    pts_rem = cur_total - points_completed
+
+    # Velocity
+    vel = points_completed / lastCompleteSprint
+
+    # Sprints left
+    sprints_rem = pts_rem / vel
     
     # Data frame
     sprint_metrics_df = pd.DataFrame({'Current Total Pts': cur_total,
@@ -104,7 +113,10 @@ def get_sprint_metrics(curSprint, lastCompleteSprint, pivot, pivot_cumsum,
                                      'Points Expected': points_expected,
                                      'Points Completed': points_completed,
                                      'Delta Points': delta,
-                                     'Current Completed': cur_points_completed})
+                                     'Current Completed': cur_points_completed,
+                                     'Points Remaining': pts_rem,
+                                     'Velocity': vel, 
+                                     'Sprints Remaining': sprints_rem})
 
     return sprint_metrics_df
 
