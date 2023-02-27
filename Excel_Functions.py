@@ -26,7 +26,7 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
 
     # Merge cells for headers
     merged_headers = ['A1:A1', 'B1:C1', 'D1:E1', 'F1:G1',
-                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:R1']
+                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', f'O1:{letters[stoplight_numcols]}1']
     for cell_rng in merged_headers:
         if cell_rng[0] != cell_rng[3]:
             ws.merge_range(cell_rng, '')
@@ -63,8 +63,8 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
             else:
                 subheader = 'Projected'
         ws.write(1, col, subheader, subheader_format)
-    extra_subheaders = ['Current Total Pts', 'Points Expected', 
-                        'Points Completed', 'Delta Points', 'Current Completed']
+
+    extra_subheaders = stoplight_data.columns[12:] # Anything after sprint 1-6 data
     for col in range(13,stoplight_numcols+1):
         ws.write(1, col, extra_subheaders[col-13], subheader_format)
 
