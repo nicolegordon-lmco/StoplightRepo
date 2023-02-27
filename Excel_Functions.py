@@ -8,11 +8,12 @@ import xlsxwriter
 import string
 import datetime as dt
 
-def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
+def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, clin):
     letters = string.ascii_uppercase
     stoplight_data = stoplight_dict[clin]['Data'].copy()
     stoplight_change = stoplight_dict[clin]['Change_BL'].copy()
-    PI_sprint = f"{stoplight_data.columns[(sprint-1) * 2][:4]}.{sprint}"
+    PI_sprintCompleted = f"{stoplight_data.columns[(lastCompleteSprint-1) * 2][:4]}.{lastCompleteSprint}"
+    stoplight_numcols = stoplight_data.shape[1]
 
     for idx in stoplight_data.index:
         change = stoplight_change.loc[idx, 'Change Since BL']
@@ -25,7 +26,7 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
 
     # Merge cells for headers
     merged_headers = ['A1:A1', 'B1:C1', 'D1:E1', 'F1:G1',
-                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:Q1']
+                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:R1']
     for cell_rng in merged_headers:
         if cell_rng[0] != cell_rng[3]:
             ws.merge_range(cell_rng, '')
@@ -41,7 +42,7 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
                'Sprint 1', 'Sprint 2', 'Sprint 3', 
                'Sprint 4', 'Sprint 5', 'Sprint 6 (Planning Sprint)',
                'Current Total Pts (Change Since PI Planning)',
-              f'Points Analysis (End Sprint {PI_sprint})']
+              f'Points Analysis (End Sprint {PI_sprintCompleted})']
 
     for idx, header in zip(merged_headers, headers):
         ws.write(idx, header, header_format)
@@ -57,20 +58,23 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
         if col % 2 == 1:
             subheader = 'Baseline'
         else:
-            if (col/2) <= sprint:
+            if (col/2) <= curSprint:
                 subheader = 'Actual'
             else:
                 subheader = 'Projected'
         ws.write(1, col, subheader, subheader_format)
     extra_subheaders = ['Current Total Pts', 'Points Expected', 
-                        'Points Completed', 'Delta Points']
-    for col in range(13,17):
+                        'Points Completed', 'Delta Points', 'Current Completed']
+    for col in range(13,stoplight_numcols+1):
         ws.write(1, col, extra_subheaders[col-13], subheader_format)
 
     # Column widths
-    ws.set_column(1, 16, 10)
-    ws.set_column(0, 0, 30)
-    ws.set_column(13, 13, 18)
+    # ws.set_column(start_col, end_col, width) (columns are 0 indexed)
+    ws.set_column(1, stoplight_numcols, 10) # default
+    ws.set_column(0, 0, 30) # clin categories
+    ws.set_column(13, 13, 18) # current total pts
+    ws.set_column(15, 15, 12) # Points completed
+    ws.set_column(17, 17, 12) # Current completed
 
     # Add category data
     cat_format = wb.add_format({'bold': True, 'font_color': 'black',
@@ -140,15 +144,14 @@ def create_stoplight_sheet(wb, stoplight_dict, sprint, clin):
                                      'bg_color': '#2684FF',
                                     'num_format': '0%'})
 
-    data_list = stoplight_data.values.ravel()
     for i in range(num_rows):
-        for col in range(1,17):
-            cell_data = data_list[16*i + col - 1]
+        for col in range(1,stoplight_numcols+1):
+            cell_data = stoplight_data.iloc[i, col-1]
             # Sprints 1-6
             if col in range(1,13):
                 # Col is <= current sprint and is actual/projected
-                if (col <= sprint*2) & (col % 2 == 0):
-                    corr_BL_data = data_list[16*i + col - 2]
+                if (col <= curSprint*2) & (col % 2 == 0):
+                    corr_BL_data = stoplight_data.iloc[i, col-2]
                     diff = cell_data - corr_BL_data
                     # On track/ahead
                     if diff > -0.05:
@@ -228,22 +231,25 @@ def create_excel(data, sprint, stoplight_dir,
                        f'Sprint {sprint}', title_format)
             
             data[sheet]['Sprint Metrics'].to_excel(writer, sheet_name=sheet,
-                                                   startrow=cumper_startrow, startcol=10) 
-            ws.set_column(10, 10, 60)
+                                                   startrow=cumper_startrow, startcol=num_cols_sum+2) 
+            ws.set_column(num_cols_sum+2, num_cols_sum+2, 60)
 
             # Round format
             round_format = wb.add_format({'num_format': '#,##0'})
-            ws.conditional_format(f'{letters[num_cols_sum+num_cols_sprint]}{cumper_startrow+2}:{last_col_sprint}{cumper_startrow+2+num_epics}',
+            ws.conditional_format(f'{letters[num_cols_sum+5]}{cumper_startrow+2}:{last_col_sprint}{cumper_startrow+2+num_epics}',
                                     {'type': 'no_errors',
                                     'format': round_format})
+
+            # Columnd widths
+            ws.set_column(num_cols_sum+3, num_cols_sum+2+num_cols_sprint, 18)
  
             if sheet == 'Current Pivot':
                 num_cols_change = data[sheet]['Changes Since Last Week'].shape[1]
                 last_col_change = letters[num_cols_sum+2+num_cols_change]
                 # Changes since last week
                 data[sheet]['Changes Since Last Week'].to_excel(writer, sheet_name=sheet, 
-                                                                startrow=1 , startcol=10)   
-                ws.set_column(11, 20, 15)
+                                                                startrow=1 , startcol=num_cols_sum+2) 
+                ws.set_column(num_cols_sum+3, num_cols_sum+2+num_cols_change, 18)  
                 
                 # Add header
                 ws.merge_range(f'{first_col_change}1:{last_col_change}1',
@@ -263,7 +269,7 @@ def create_excel(data, sprint, stoplight_dir,
         cat_format = wb.add_format({'align': 'left',
                                    'bold': False})
         ws.set_column(0, 0, 60, cat_format)
-        ws.set_column(1, 9, 10, cat_format)
+        ws.set_column(1, num_cols_sum, 10, cat_format)
 
         # Merge and add headers
         letters = string.ascii_uppercase

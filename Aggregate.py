@@ -13,7 +13,14 @@ def get_cumsum(pivot):
 
 def get_cumper(pivot, cum_sum, epics):
     # Total points in assigned sprint columns will be last column of the cumulative sum df
-    totals = (cum_sum.iloc[:, -1]
+    # plus the slipped points
+    if "Slip" in pivot.columns:
+        totals = cum_sum.iloc[:, -1] + pivot.Slip.drop('Grand Total')
+    else:
+        totals = cum_sum.iloc[:, -1]
+
+    # Reshape
+    totals = (totals
              .values
              .repeat(cum_sum.shape[1])
              .reshape(cum_sum.shape))
@@ -24,10 +31,14 @@ def get_clin(df, clin):
     clin_idx = df.index.to_series().apply(lambda x: clin in x)
     return df[clin_idx]
 
-def get_clin_per(cum_sum, clin):
-    # Only use assigned sprint columns
+def get_clin_per(cum_sum, pivot, clin):
+    # Only use assigned sprint columns, plus slip if applicable
     cur_clin = get_clin(cum_sum, clin)
-    total = cur_clin.iloc[:, -1].values.sum() 
+    if 'Slip' in pivot.columns:
+        cur_clin_slip = get_clin(pivot, clin).Slip
+        total = (cur_clin.iloc[:, -1] + cur_clin_slip).values.sum()
+    else:
+        total = cur_clin.iloc[:, -1].values.sum() 
     clin_per = get_clin(cum_sum, clin).sum() / total
     return clin_per
 
@@ -46,15 +57,14 @@ def get_cum_metrics(pivot, epics, clins):
     
     # CLIN breakout
     CLIN_df = pd.DataFrame()
-    clins = ['CLIN 2013', 'CLIN 2016', 'CLIN 2018']
     for clin in clins:
-        clin_per = get_clin_per(cum_sum, clin)
+        clin_per = get_clin_per(cum_sum, pivot, clin)
         CLIN_df[clin] = clin_per
     CLIN_df = CLIN_df.transpose()
     
     return cum_sum, cum_per, CLIN_df
 
-def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
+def get_sprint_metrics(curSprint, lastCompleteSprint, pivot_cumsum,
                          baseline_cumsum, baseline_cumper, epics):
     # Current total
     cur_total = pivot_cumsum.iloc[:, -1].values
@@ -64,17 +74,24 @@ def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
     baseline_change = cur_total - baseline_total
     
     # Points expected
-    pattern = re.compile(fr'\d\d\.\d-S{sprint_num}')
+    last_pattern = re.compile(fr'\d\d\.\d-S{lastCompleteSprint}')
     col = (baseline_cumper.columns.to_series()
-           .apply(find_PI_sprint, args=(pattern,))
+           .apply(find_PI_sprint, args=(last_pattern,))
            .dropna().values[0])
     points_expected = (baseline_cumper.loc[epics, col] * cur_total)
     
     # Points completed
     col = (pivot_cumsum.columns.to_series()
-           .apply(find_PI_sprint, args=(pattern,))
+           .apply(find_PI_sprint, args=(last_pattern,))
            .dropna().values[0])
     points_completed = pivot_cumsum.loc[epics, col]
+
+    # Current completed
+    cur_pattern = re.compile(fr'\d\d\.\d-S{curSprint}')
+    col = (pivot_cumsum.columns.to_series()
+           .apply(find_PI_sprint, args=(cur_pattern,))
+           .dropna().values[0])
+    cur_points_completed = pivot_cumsum.loc[epics, col]
     
     # Delta
     delta = points_completed - points_expected
@@ -84,10 +101,12 @@ def get_sprint_metrics(sprint_num, pivot, baseline_pivot, pivot_cumsum,
                                      'Change Since BL': baseline_change,
                                      'Points Expected': points_expected,
                                      'Points Completed': points_completed,
-                                     'Delta Points': delta})
+                                     'Delta Points': delta,
+                                     'Current Completed': cur_points_completed})
+
     return sprint_metrics_df
 
-def get_aggregated_data(sprint_num, 
+def get_aggregated_data(curSprint, lastCompleteSprint, 
                         newDataFile, prevDataFile, 
                         baseDataFile, PILookupFile,
                         epics, clins, PI):
@@ -102,7 +121,7 @@ def get_aggregated_data(sprint_num,
     cols = (changes_since_last_week.columns.to_series()
             .apply(find_PI_sprint, args=(pattern,))
             .dropna().values)
-    cols = np.append(cols, ['Grand Total'])
+    cols = np.append(cols, ['Slip', 'Grand Total'])
     changes_since_last_week = changes_since_last_week.loc[epics, cols]
     
     # Get cumulative metrics
@@ -111,13 +130,11 @@ def get_aggregated_data(sprint_num,
     (baseline_cum_sum, baseline_cum_per, baseline_CLIN_df) = get_cum_metrics(baseline_pivot, epics, clins)
     
     # Get sprint metrics
-    cur_sprint_metrics = get_sprint_metrics(sprint_num, 
-                                            cur_pivot, baseline_pivot, 
+    cur_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint, 
                                             cur_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
-    prev_sprint_metrics = get_sprint_metrics(sprint_num, 
-                                            prev_pivot, baseline_pivot, 
+    prev_sprint_metrics = get_sprint_metrics(curSprint, lastCompleteSprint,  
                                             prev_cum_sum, baseline_cum_sum, 
                                             baseline_cum_per,
                                             epics)
