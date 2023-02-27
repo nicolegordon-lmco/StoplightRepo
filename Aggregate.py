@@ -198,6 +198,15 @@ def get_stoplight_data(data, clin):
     points_cats = get_clin(data['Current Pivot']['Sprint Metrics'], clin)
     points_tot = pd.DataFrame({'Overall': points_cats.sum()}).transpose()
     points_data = pd.concat((points_cats, points_tot))
+
+    rem_cats = get_clin(data['Current Pivot']['Remaining Metrics'], clin)
+    rem_tot = (pd.DataFrame({'Overall': [np.nan] * rem_cats.shape[1]})
+               .transpose().rename(columns={0: rem_cats.columns[0],
+                                            1: rem_cats.columns[1],
+                                            2: rem_cats.columns[2]}))
+    rem_data = pd.concat((rem_cats, rem_tot))
+
+    points_data = pd.concat((points_data, rem_data), axis=1)
     
     stoplight_data = pd.concat((sprints_data, points_data), axis=1)
     

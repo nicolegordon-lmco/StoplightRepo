@@ -4,7 +4,7 @@
 # imports
 import pandas as pd
 import os
-import xlsxwriter
+import math
 import string
 import datetime as dt
 
@@ -73,9 +73,8 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
     # ws.set_column(start_col, end_col, width) (columns are 0 indexed)
     ws.set_column(1, stoplight_numcols, 10) # default
     ws.set_column(0, 0, 30) # clin categories
-    ws.set_column(13, 13, 18) # current total pts
-    ws.set_column(15, 15, 12) # Points completed
-    ws.set_column(17, 17, 12) # Current completed
+    ws.set_column(13, 13, 18) # current total
+    ws.set_column(14, stoplight_numcols, 12) # point metrics
 
     # Add category data
     cat_format = wb.add_format({'bold': True, 'font_color': 'black',
@@ -170,7 +169,11 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
                 data_format_num_delta
             else:
                 data_format = data_format_num
-            ws.write(i+2, col, cell_data, data_format)
+            # If a nan, write empty cell
+            try:
+                ws.write(i+2, col, cell_data, data_format)
+            except:
+                ws.write(i+2, col, "", data_format)
             
     return
 
