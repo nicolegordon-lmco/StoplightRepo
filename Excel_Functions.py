@@ -4,57 +4,57 @@
 # imports
 import pandas as pd
 import os
-import math
 import string
 import datetime as dt
+from format import formats
 
-def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, clin):
+def format_keys(df, keys, format, ws):
+    for row in range(df.shape[0]):
+        key = df.loc[row, 'Key']
+        if key in keys:
+            ws.conditional_format(f'B{row+2}', 
+                                    {'type': 'no_errors',
+                                    'format': format})
+
+def create_stoplight_sheet(wb, stoplightDict, curSprint, lastCompleteSprint, clin):
     letters = string.ascii_uppercase
-    stoplight_data = stoplight_dict[clin]['Data'].copy()
-    stoplight_change = stoplight_dict[clin]['Change_BL'].copy()
-    PI_sprintCompleted = f"{stoplight_data.columns[(lastCompleteSprint-1) * 2][:4]}.{lastCompleteSprint}"
-    stoplight_numcols = stoplight_data.shape[1]
+    stoplightData = stoplightDict[clin]['Data'].copy()
+    stoplightChange = stoplightDict[clin]['Change_BL'].copy()
+    PISprintCompleted = f"{stoplightData.columns[(lastCompleteSprint-1) * 2][:4]}.{lastCompleteSprint}"
+    stoplightNumCols = stoplightData.shape[1]
 
-    for idx in stoplight_data.index:
-        change = stoplight_change.loc[idx, 'Change Since BL']
+    for idx in stoplightData.index:
+        change = stoplightChange.loc[idx, 'Change Since BL']
         if change > 0:
-            stoplight_data.loc[idx, 'Current Total Pts'] = f"{stoplight_data.loc[idx, 'Current Total Pts']} (+{int(change)})"
+            stoplightData.loc[idx, 'Current Total Pts'] = f"{stoplightData.loc[idx, 'Current Total Pts']} (+{int(change)})"
         elif change < 0:
-            stoplight_data.loc[idx, 'Current Total Pts'] = f"{stoplight_data.loc[idx, 'Current Total Pts']} ({int(change)})"
+            stoplightData.loc[idx, 'Current Total Pts'] = f"{stoplightData.loc[idx, 'Current Total Pts']} ({int(change)})"
 
     ws = wb.add_worksheet(f'{clin} Stoplight')
 
     # Merge cells for headers
-    merged_headers = ['A1:A1', 'B1:C1', 'D1:E1', 'F1:G1',
-                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:R1', f'S1:{letters[stoplight_numcols]}1']
-    for cell_rng in merged_headers:
-        if cell_rng[0] != cell_rng[3]:
-            ws.merge_range(cell_rng, '')
+    mergedHeaders = ['A1:A1', 'B1:C1', 'D1:E1', 'F1:G1',
+                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:R1',
+                        f'S1:{letters[stoplightNumCols]}1']
+    for cellRange in mergedHeaders:
+        if cellRange[0] != cellRange[3]:
+            ws.merge_range(cellRange, '')
 
     # Write and format headers
-    header_format = wb.add_format({'bold': True, 'font_color': 'white',
-                                 'font': 'Calibri', 'font_size': 12,
-                                   'align': 'center', 'valign': 'top',
-                                   'text_wrap': True, 
-                                 'bg_color': '#7A869A',
-                                  'border': True, 'border_color': '#cccccc'})
+    headerFormat = wb.add_format(formats['header'])
+    
     headers = ['CLIN 2013',
                'Sprint 1', 'Sprint 2', 'Sprint 3', 
                'Sprint 4', 'Sprint 5', 'Sprint 6 (Planning Sprint)',
                'Current Total Pts (Change Since PI Planning)',
-              f'Points Analysis (End Sprint {PI_sprintCompleted})',
-              f'Assumed Velocity Forcast (End Sprint {PI_sprintCompleted}']
+              f'Points Analysis (End Sprint {PISprintCompleted})',
+              f'Assumed Velocity Forcast (End Sprint {PISprintCompleted}']
 
-    for idx, header in zip(merged_headers, headers):
-        ws.write(idx, header, header_format)
+    for idx, header in zip(mergedHeaders, headers):
+        ws.write(idx, header, headerFormat)
 
     # Write and format subheaders
-    subheader_format = wb.add_format({'bold': True, 'font_color': 'black',
-                                     'font': 'Calibri', 'font_size': 12,
-                                       'align': 'center', 'valign': 'top',
-                                       'text_wrap': True, 
-                                     'bg_color': '#ffffff',
-                                     'border': True, 'border_color': '#cccccc'})
+    subheaderFormat = wb.add_format(formats['subheader'])
     for col in range(1,13):
         if col % 2 == 1:
             subheader = 'Baseline'
@@ -63,135 +63,75 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
                 subheader = 'Actual'
             else:
                 subheader = 'Projected'
-        ws.write(1, col, subheader, subheader_format)
+        ws.write(1, col, subheader, subheaderFormat)
 
-    extra_subheaders = stoplight_data.columns[12:] # Anything after sprint 1-6 data
-    for col in range(13,stoplight_numcols+1):
-        ws.write(1, col, extra_subheaders[col-13], subheader_format)
+    extraSubheaders = stoplightData.columns[12:] # Anything after sprint 1-6 data
+    for col in range(13,stoplightNumCols+1):
+        ws.write(1, col, extraSubheaders[col-13], subheaderFormat)
 
     # Column widths
     # ws.set_column(start_col, end_col, width) (columns are 0 indexed)
-    ws.set_column(1, stoplight_numcols, 10) # default
+    ws.set_column(1, stoplightNumCols, 10) # default
     ws.set_column(0, 0, 30) # clin categories
     ws.set_column(13, 13, 18) # current total
-    ws.set_column(14, stoplight_numcols, 12) # point metrics
+    ws.set_column(14, stoplightNumCols, 12) # point metrics
 
-    # Add category data
-    cat_format = wb.add_format({'bold': True, 'font_color': 'black',
-                                 'font': 'Calibri', 'font_size': 12,
-                               'align': 'center', 'valign': 'top',
-                               'text_wrap': True,
-                               'bg_color': '#ffffff',
-                               'border': True, 'border_color': '#cccccc'})
-    num_rows = stoplight_data.index.shape[0]
-    for i in range(num_rows):
-        ws.write(f'A{i+3}', stoplight_data.index[i], cat_format)
+    # Add epics
+    epicFormat = wb.add_format(formats['epic'])
+    numRows = stoplightData.index.shape[0]
+    for i in range(numRows):
+        ws.write(f'A{i+3}', stoplightData.index[i], epicFormat)
 
     # Add stoplight data
-    data_format_num_delta = wb.add_format({'align': 'center',
-                                            'valign': 'top',
-                                            'font_color': 'black',
-                                            'font': 'Calibri', 
-                                            'font_size': 11,
-                                            'bg_color': '#ffffff',
-                                            'border': True, 'border_color': '#cccccc'})
-    data_format_num = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                    'bg_color': '#ffffff',
-                                    'border': True, 'border_color': '#cccccc',
-                                    'num_format': '#,##0'})
-    data_format_dec = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                    'bg_color': '#ffffff',
-                                    'border': True, 'border_color': '#cccccc',
-                                    'num_format': '#,##0.00'})
-    data_format_per = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                     'border': True, 'border_color': '#cccccc',
-                                     'bg_color': '#ffffff',
-                                    'num_format': '0%'})
-    data_format_green = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                       'border': True, 'border_color': '#cccccc',
-                                     'bg_color': '#57D9A3',
-                                    'num_format': '0%'})
-    data_format_yellow = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                    'border': True, 'border_color': '#cccccc',
-                                     'bg_color': '#FFE380',
-                                    'num_format': '0%'})
-    data_format_red = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                     'border': True, 'border_color': '#cccccc',
-                                     'bg_color': '#DE350B',
-                                    'num_format': '0%'})
-    data_format_blue = wb.add_format({'align': 'center',
-                                    'valign': 'top',
-                                     'font_color': 'black',
-                                     'font': 'Calibri', 
-                                     'font_size': 11,
-                                      'border': True, 'border_color': '#cccccc',
-                                     'bg_color': '#2684FF',
-                                    'num_format': '0%'})
+    dataFormatNumDelta = wb.add_format(formats['SLNumDelta'])
+    dataFormatNum = wb.add_format(formats['SLNum'])
+    dataFormatDec = wb.add_format(formats['SLDec'])
+    dataFormatPer = wb.add_format(formats['SLPer'])
+    dataFormatGreen = wb.add_format(formats['SLGreen'])
+    dataFormatYellow = wb.add_format(formats['SLYellow'])
+    dataFormatRed = wb.add_format(formats['SLRed'])
+    dataFormatBlue = wb.add_format(formats['SLBlue'])
 
-    for i in range(num_rows):
-        for col in range(1,stoplight_numcols+1):
-            cell_data = stoplight_data.iloc[i, col-1]
+    for i in range(numRows):
+        for col in range(1,stoplightNumCols+1):
+            cellData = stoplightData.iloc[i, col-1]
             # Sprints 1-6
             if col in range(1,13):
                 # Col is <= current sprint and is actual/projected
                 if (col <= curSprint*2) & (col % 2 == 0):
-                    corr_BL_data = stoplight_data.iloc[i, col-2]
-                    diff = cell_data - corr_BL_data
+                    corrBLData = stoplightData.iloc[i, col-2]
+                    diff = cellData - corrBLData
                     # On track/ahead
                     if diff > -0.05:
-                        data_format = data_format_green
+                        dataFormat = dataFormatGreen
                     # Slightly off track
                     if (diff <= -0.05) & (diff > -0.1):
-                        data_format = data_format_yellow
+                        dataFormat = dataFormatYellow
                     # Off track
                     if (diff <= -0.1):
-                        data_format = data_format_red
+                        dataFormat = dataFormatRed
                 else:  
-                    data_format = data_format_per
+                    dataFormat = dataFormatPer
             # Points metrics
             elif col == 13:
-                data_format = data_format_num_delta
-            elif col == stoplight_numcols:
-                data_format = data_format_dec
+                dataFormat = dataFormatNumDelta
+            elif col == stoplightNumCols:
+                dataFormat = dataFormatDec
             else:
-                data_format = data_format_num
+                dataFormat = dataFormatNum
             # If a nan, write empty cell
             try:
-                ws.write(i+2, col, cell_data, data_format)
+                ws.write(i+2, col, cellData, dataFormat)
             except:
-                ws.write(i+2, col, "", data_format)
+                ws.write(i+2, col, "", dataFormat)
             
     return
 
 
-def create_excel(data, sprint, stoplight_dir, 
+def create_excel(data, sprint, stoplightDir, 
                  newDataFile, prevDataFile, baseDataFile):
     letters = string.ascii_uppercase
-    excelFile = os.path.join(stoplight_dir,
+    excelFile = os.path.join(stoplightDir,
                              f'Ground_Dev_ART_STOPLIGHT_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}.xlsx')
     writer = pd.ExcelWriter(excelFile,
                             engine='xlsxwriter')   
@@ -200,121 +140,113 @@ def create_excel(data, sprint, stoplight_dir,
         ws = wb.add_worksheet(sheet)
         writer.sheets[sheet] = ws
         data[sheet]['Pivot'].to_excel(writer, sheet_name=sheet, startrow=1 , startcol=0, freeze_panes=(0,1)) 
-        num_epics = data[sheet]['Pivot'].shape[0]
-        num_cols_sum = data[sheet]["Pivot"].shape[1]
-        num_cols_cum = data[sheet]["Cum Sum"].shape[1]
+        numEpics = data[sheet]['Pivot'].shape[0]
+        numColsSum = data[sheet]["Pivot"].shape[1]
+        numColsCum = data[sheet]["Cum Sum"].shape[1]
         
-        last_col_sum = letters[num_cols_sum]
-        last_col_cum = letters[num_cols_cum]
+        lastColSum = letters[numColsSum]
+        lastColCum = letters[numColsCum]
 
-        cumsum_startrow = num_epics + 4
-        data[sheet]['Cum Sum'].to_excel(writer, sheet_name=sheet, startrow=cumsum_startrow, startcol=0) 
-        cumper_startrow = num_epics*2+6
-        data[sheet]['Cum Per'].to_excel(writer, sheet_name=sheet, startrow=cumper_startrow, startcol=0) 
-        clin_startrow = num_epics*3+7
-        data[sheet]['CLIN Per'].to_excel(writer, sheet_name=sheet, startrow=clin_startrow, startcol=0) 
+        cumSumStartRow = numEpics + 4
+        data[sheet]['Cum Sum'].to_excel(writer, sheet_name=sheet, startrow=cumSumStartRow, startcol=0) 
+        cumPerStartRow = numEpics*2+6
+        data[sheet]['Cum Per'].to_excel(writer, sheet_name=sheet, startrow=cumPerStartRow, startcol=0) 
+        clinStartRow = numEpics*3+7
+        data[sheet]['CLIN Per'].to_excel(writer, sheet_name=sheet, startrow=clinStartRow, startcol=0) 
 
         # header format
-        title_format = wb.add_format({'font': 'Calibri', 
-                                      'font_color': 'white',
-                                     'font_size': 12, 
-                                      'bold': True,
-                                     'bg_color': '#003cb3',
-                                     'align': 'center',
-                                     'border': True,
-                                     'border_color': 'black'})
+        titleFormat = wb.add_format(formats['title'])
 
         # Pergentage format
-        percent_format = wb.add_format({'num_format': '0%'})
+        percentFormat = wb.add_format({'num_format': '0%'})
         
-        ws.conditional_format(f'B{cumper_startrow+2}:{last_col_cum}{cumper_startrow+2+num_epics}', 
+        ws.conditional_format(f'B{cumPerStartRow+2}:{lastColCum}{cumPerStartRow+2+numEpics}', 
                                 {'type': 'no_errors',
-                                'format': percent_format})
-        ws.conditional_format(f'B{clin_startrow+2}:{last_col_cum}{clin_startrow+4}', 
+                                'format': percentFormat})
+        ws.conditional_format(f'B{clinStartRow+2}:{lastColCum}{clinStartRow+4}', 
                                 {'type': 'no_errors',
-                                'format': percent_format})
+                                'format': percentFormat})
 
         # Extra tables
         if (sheet == 'Current Pivot') | (sheet == 'Previous Pivot'):
-            num_cols_sprint = data[sheet]["Sprint Metrics"].shape[1]
-            num_cols_rem = data[sheet]["Remaining Metrics"].shape[1]
-            first_col_change = letters[num_cols_sum+2]
-            last_col_sprint = letters[num_cols_sum+num_cols_sprint+2]
-            first_col_rem = letters[num_cols_sum+num_cols_sprint+4]
-            last_col_rem = letters[num_cols_sum+num_cols_sprint+num_cols_rem+3]
+            numColsSprint = data[sheet]["Sprint Metrics"].shape[1]
+            numColsRem = data[sheet]["Remaining Metrics"].shape[1]
+            firstColChange = letters[numColsSum+2]
+            lastColSprint = letters[numColsSum+numColsSprint+2]
+            firstColRem = letters[numColsSum+numColsSprint+4]
+            lastColRem = letters[numColsSum+numColsSprint+numColsRem+3]
 
             # Sprint table and remaining table
-            ws.merge_range(f'{first_col_change}{cumper_startrow}:{last_col_sprint}{cumper_startrow}',
-                       f'Sprint {sprint}', title_format)
-            ws.merge_range(f'{first_col_rem}{cumper_startrow}:{last_col_rem}{cumper_startrow}',
-                       f'Sprint {sprint}', title_format)
+            ws.merge_range(f'{firstColChange}{cumPerStartRow}:{lastColSprint}{cumPerStartRow}',
+                       f'Sprint {sprint}', titleFormat)
+            ws.merge_range(f'{firstColRem}{cumPerStartRow}:{lastColRem}{cumPerStartRow}',
+                       f'Sprint {sprint}', titleFormat)
             
             data[sheet]['Sprint Metrics'].to_excel(writer, sheet_name=sheet,
-                                                   startrow=cumper_startrow, startcol=num_cols_sum+2) 
+                                                   startrow=cumPerStartRow, startcol=numColsSum+2) 
             data[sheet]['Remaining Metrics'].to_excel(writer, sheet_name=sheet,
-                                                        startrow=cumper_startrow, startcol=num_cols_sum+2+num_cols_sprint+2,
+                                                        startrow=cumPerStartRow, startcol=numColsSum+numColsSprint+4,
                                                         index=False) 
-            ws.set_column(num_cols_sum+2, num_cols_sum+2, 60)
+            ws.set_column(numColsSum+2, numColsSum+2, 60)
 
             # Round format
-            round_format = wb.add_format({'num_format': '#,##0'})
-            ws.conditional_format(f'{letters[num_cols_sum+5]}{cumper_startrow+2}:{letters[num_cols_sum+num_cols_sprint+num_cols_rem+2]}{cumper_startrow+2+num_epics}',
+            roundFormat = wb.add_format({'num_format': '#,##0'})
+            ws.conditional_format(f'{letters[numColsSum+5]}{cumPerStartRow+2}:{letters[numColsSum+numColsSprint+numColsRem+2]}{cumPerStartRow+2+numEpics}',
                                     {'type': 'no_errors',
-                                    'format': round_format})
-            round2_format = wb.add_format({'num_format': '#,##0.00'})
-            ws.conditional_format(f'{last_col_rem}{cumper_startrow+2}:{last_col_rem}{cumper_startrow+2+num_epics}',
+                                    'format': roundFormat})
+            round2Format = wb.add_format({'num_format': '#,##0.00'})
+            ws.conditional_format(f'{lastColRem}{cumPerStartRow+2}:{lastColRem}{cumPerStartRow+2+numEpics}',
                                     {'type': 'no_errors',
-                                    'format': round2_format})
+                                    'format': round2Format})
 
             # Columnd widths
-            ws.set_column(num_cols_sum+3, num_cols_sum+num_cols_sprint+num_cols_rem+3, 18)
+            ws.set_column(numColsSum+3, numColsSum+numColsSprint+numColsRem+3, 18)
  
             if sheet == 'Current Pivot':
-                num_cols_change = data[sheet]['Changes Since Last Week'].shape[1]
-                last_col_change = letters[num_cols_sum+2+num_cols_change]
+                numColsChange = data[sheet]['Changes Since Last Week'].shape[1]
+                lastColChange = letters[numColsSum+2+numColsChange]
                 # Changes since last week
                 data[sheet]['Changes Since Last Week'].to_excel(writer, sheet_name=sheet, 
-                                                                startrow=1 , startcol=num_cols_sum+2)  
+                                                                startrow=1 , startcol=numColsSum+2)  
                 
                 # Add header
-                ws.merge_range(f'{first_col_change}1:{last_col_change}1',
-                               'Changes Since Last Week', title_format)
+                ws.merge_range(f'{firstColChange}1:{lastColChange}1',
+                               'Changes Since Last Week', titleFormat)
                 
                 # Add cell formatting to changes since last week
-                red_format = wb.add_format({'bg_color': '#FFC7CE',
-                                           'font_color': '#9C0006'})
-                last_row = data[sheet]['Changes Since Last Week'].shape[0] + 2
-                ws.conditional_format(f'{letters[num_cols_sum+3]}3:{last_col_change}{last_row}', 
+                redFormat = wb.add_format(formats['redDelta'])
+                lastRow = data[sheet]['Changes Since Last Week'].shape[0] + 2
+                ws.conditional_format(f'{letters[numColsSum+3]}3:{lastColChange}{lastRow}', 
                                         {'type': 'cell',
                                         'criteria': '!=',
                                         'value': 0,
-                                        'format': red_format})
+                                        'format': redFormat})
 
         # Column widths and formats
-        cat_format = wb.add_format({'align': 'left',
+        catFormat = wb.add_format({'align': 'left',
                                    'bold': False})
-        ws.set_column(0, 0, 60, cat_format)
-        ws.set_column(1, num_cols_sum, 10, cat_format)
+        ws.set_column(0, 0, 60, catFormat)
+        ws.set_column(1, numColsSum, 10, catFormat)
 
         # Merge and add headers
         letters = string.ascii_uppercase
         
-        ws.merge_range(f'A1:{last_col_sum}1',
-                       'Sum of Story Points', title_format)
-        ws.merge_range(f'A{cumsum_startrow}:{last_col_cum}{cumsum_startrow}',
-                       'Cumulative', title_format)
-        ws.merge_range(f'A{cumper_startrow}:{last_col_cum}{cumper_startrow}',
-                       'Percentage', title_format)
+        ws.merge_range(f'A1:{lastColSum}1',
+                       'Sum of Story Points', titleFormat)
+        ws.merge_range(f'A{cumSumStartRow}:{lastColCum}{cumSumStartRow}',
+                       'Cumulative', titleFormat)
+        ws.merge_range(f'A{cumPerStartRow}:{lastColCum}{cumPerStartRow}',
+                       'Percentage', titleFormat)
         
 
     sheets = ['Current Jira Export', 'Previous Jira Export', 'Baseline Jira Export']
     files = [newDataFile, prevDataFile, baseDataFile]
 
-    slip_format = wb.add_format({'bg_color': '#cceeff'})
-    slips = data['Current Pivot']['Slip'].Key.values
+    slipFormat = wb.add_format(formats['slipStories'])
+    slipStories = data['Current Pivot']['Slip'].Key.values
 
-    new_format = wb.add_format({'bg_color': '#ffffcc'})
-    new = data['Current Pivot']['New'].Key.values
+    newFormat = wb.add_format(formats['newStories'])
+    newStories = data['Current Pivot']['New'].Key.values
 
     for (file, sheet) in zip(files, sheets):
         df = pd.read_excel(file, usecols='A:P')
@@ -323,19 +255,9 @@ def create_excel(data, sprint, stoplight_dir,
         ws = writer.sheets[sheet]
         # Add conditional formatting for new and slips
         if sheet == 'Current Jira Export':
-            for row in range(df.shape[0]):
-                key = df.loc[row, 'Key']
-                if key in new:
-                    ws.conditional_format(f'B{row+2}', 
-                                            {'type': 'no_errors',
-                                            'format': new_format})
+            format_keys(df, newStories, newFormat, ws)
         else:
-            for row in range(df.shape[0]):
-                key = df.loc[row, 'Key']
-                if key in slips:
-                    ws.conditional_format(f'B{row+2}', 
-                                            {'type': 'no_errors',
-                                            'format': slip_format})
+            format_keys(df, slipStories, slipFormat, ws)
     wb.close()
     
     return

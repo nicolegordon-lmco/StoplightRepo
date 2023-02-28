@@ -14,42 +14,42 @@ def testIndexes(x, jira):
                " for missing or extra rows and rerun. Now exiting...")
         sys.exit()
 
-def split_level(df, filter_condition, apply_func, fill_na):
+def split_level(df, filterCondition, applyFunc, fillNA):
     """Function to split into levels by Summary""" 
-    feature_dict = (df[filter_condition] [['Index', 'Summary']]
+    featureDict = (df[filterCondition] [['Index', 'Summary']]
                      .set_index('Index')
                      .to_dict()['Summary'])
-    new_series = (df.Index.str.split('.').apply(apply_func)
-                   .map(feature_dict)
-                   .fillna(fill_na))
-    return new_series
+    newSeries = (df.Index.str.split('.').apply(applyFunc)
+                   .map(featureDict)
+                   .fillna(fillNA))
+    return newSeries
 
-def split_level_key(df, filter_condition, apply_func, fill_na):
+def split_level_key(df, filterCondition, applyFunc, fillNA):
     """Function to split into levels by Key""" 
-    feature_dict = (df[filter_condition] [['Index', 'Key']]
+    featureDict = (df[filterCondition] [['Index', 'Key']]
                      .set_index('Index')
                      .to_dict()['Key'])
-    new_series = (df.Index.str.split('.').apply(apply_func)
-                   .map(feature_dict)
-                   .fillna(fill_na))
-    return new_series
+    newSeries = (df.Index.str.split('.').apply(applyFunc)
+                   .map(featureDict)
+                   .fillna(fillNA))
+    return newSeries
 
-def get_PI_Lookup(df, PILookup_df, jira):
+def get_PILookup(df, PILookupDf, jira):
     """Get PI dates from excel file"""
-    PI_lookup = {}
+    PILookup = {}
     for idx, date in zip(df['Index'], df['Planned Start Date']):
         if pd.isna(date):
-            PI_lookup[idx] = np.nan
+            PILookup[idx] = np.nan
         elif isinstance(date, (float, int)):
             print(f"Invalid PLanned Start Date: {date}. Please check the {jira} Jira export file" \
                     " for invalid dates. Now exiting...")    
             sys.exit()
         else: 
-            for i in PILookup_df.index:
-                if ((date >= PILookup_df.loc[i, 'Start']) & (date <= PILookup_df.loc[i, 'End'])):
-                    PI_lookup[idx] = PILookup_df.loc[i, 'PI']
+            for i in PILookupDf.index:
+                if ((date >= PILookupDf.loc[i, 'Start']) & (date <= PILookupDf.loc[i, 'End'])):
+                    PILookup[idx] = PILookupDf.loc[i, 'PI']
                     break
-    return list(PI_lookup.values())
+    return list(PILookup.values())
 
 def find_PI_sprint(string, pattern, PI=True):
     matches = pattern.findall(str(string))
@@ -66,7 +66,7 @@ def find_team(string):
         return np.nan
     return string[match_idx+7:]
 
-def get_attributes(df, PILookup_df, jira, feature_level=3):
+def get_attributes(df, PILookupDf, jira, featureLevel=3):
     # Make sure all indexes are valid
     df.Index.apply(lambda x: testIndexes(x, jira))
 
@@ -74,7 +74,7 @@ def get_attributes(df, PILookup_df, jira, feature_level=3):
     df['Index Level'] = df.Index.str.count("\.") + 1
 
     # Feature Level
-    df['Feature Level'] = feature_level
+    df['Feature Level'] = featureLevel
 
     # Epic
     df['Epic'] = split_level(df, 
@@ -83,57 +83,57 @@ def get_attributes(df, PILookup_df, jira, feature_level=3):
                             'No Epic')
 
     # Capability
-    capability_temp = pd.DataFrame({'Index': df.Index,
+    capabilityTemp = pd.DataFrame({'Index': df.Index,
                                     'Summary':
                                     split_level(df, 
-                                    df.Key.apply(lambda x: x[:9]) == "PCM_COOLR", 
+                                    df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
                                     lambda x: '.'.join(x[:2]), 
                                     np.nan)})
-    capability_fill = split_level(capability_temp, 
-                                  df.Key.apply(lambda x: x[:9]) == "PCM_COOLR", 
+    capabilityFill = split_level(capabilityTemp, 
+                                  df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
                                   lambda x: x[0], 
                                   df.Summary)
-    capability_temp.Summary.fillna(capability_fill, inplace=True)
-    df['Capability'] = capability_temp.Summary
+    capabilityTemp.Summary.fillna(capabilityFill, inplace=True)
+    df['Capability'] = capabilityTemp.Summary
 
     # ID: Capability
-    id_capability_temp = pd.DataFrame({'Index': df.Index,
+    idCapabilityTemp = pd.DataFrame({'Index': df.Index,
                                         'Key':
                                         split_level_key(df, 
-                                        df.Key.apply(lambda x: x[:9]) == "PCM_COOLR", 
+                                        df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
                                         lambda x: '.'.join(x[:2]), 
                                         np.nan)})
-    id_capability_fill = split_level_key(id_capability_temp, 
-                                          df.Key.apply(lambda x: x[:9]) == "PCM_COOLR", 
+    idCapabilityFill = split_level_key(idCapabilityTemp, 
+                                          df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
                                           lambda x: x[0], 
                                           df.Key)
-    id_capability_temp.Key.fillna(id_capability_fill, inplace=True)
-    df['ID: Capability'] = id_capability_temp.Key + ": " + df['Capability']
+    idCapabilityTemp.Key.fillna(idCapabilityFill, inplace=True)
+    df['ID: Capability'] = idCapabilityTemp.Key + ": " + df['Capability']
 
     # Feature
-    features_df = df[df['Index Level'] == 3] [['Index', 'Key', 'Summary']]
-    features_df['feature'] = features_df.Key + ": " + features_df.Summary
-    features_dict = (features_df
+    featuresDf = df[df['Index Level'] == 3] [['Index', 'Key', 'Summary']]
+    featuresDf['feature'] = featuresDf.Key + ": " + featuresDf.Summary
+    featuresDict = (featuresDf
                      .set_index('Index')
                      .to_dict()['feature'])
     df['Feature'] = (df.Index.str.split('.').apply(lambda x: '.'.join(x[:3]))
-                               .map(features_dict)
+                               .map(featuresDict)
                                .fillna(np.nan))
 
     df['Features'] = df['Key'] + ": " + df['Summary']
     df['Features'].where(df['Index Level'] == df['Feature Level'], np.nan, inplace=True)
 
     # PI Lookup
-    df['PI Lookup'] = get_PI_Lookup(df, PILookup_df, jira)
+    df['PI Lookup'] = get_PILookup(df, PILookupDf, jira)
 
     # N-Sprint
     df['N-Sprint'] = df.Sprint.str.count(',') + 1
 
     # PI
     df['PI'] = np.nan
-    defined_sprint = (df['N-Sprint'] >= 1)
+    definedSprint = (df['N-Sprint'] >= 1)
     pattern = re.compile(r"PI \d{2}\.\d")
-    df.loc[defined_sprint, 'PI'] = df.Sprint.apply(find_PI_sprint, args=(pattern,))
+    df.loc[definedSprint, 'PI'] = df.Sprint.apply(find_PI_sprint, args=(pattern,))
     backlog = df.Sprint.str.startswith('Backlog').fillna(False)
     df.loc[backlog, 'PI'] = ['Backlog'] * backlog.sum()
     df['PI'].fillna(df['PI Lookup'], inplace=True)
@@ -153,10 +153,10 @@ def get_attributes(df, PILookup_df, jira, feature_level=3):
 
     # Level
     df["Level"] = np.nan
-    pcm_coolr = (df.Key.str.startswith('PCM_COOLR'))
+    pcmCoolr = (df.Key.str.startswith('pcmCoolr'))
     space = (df.Key.str.startswith('SPACE'))
     team = (df.Key.str.count('_') > 1)
-    df.loc[pcm_coolr,"Level"] = 'Solution'
+    df.loc[pcmCoolr,"Level"] = 'Solution'
     df.loc[space,"Level"] = 'Portfolio'
     df.loc[team,"Level"] = 'Team'
     df.Level.fillna('ART', inplace=True)
