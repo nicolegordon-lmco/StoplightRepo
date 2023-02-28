@@ -125,9 +125,9 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
                         baseDataFile, PILookupFile,
                         epics, clins, PI):
     # Get pivot tables
-    (cur_pivot, prev_pivot, baseline_pivot) = all_pivots(newDataFile, prevDataFile, 
-                                                        baseDataFile, PILookupFile, 
-                                                        epics, PI)
+    (cur_pivot, prev_pivot, baseline_pivot, curSlip) = all_pivots(newDataFile, prevDataFile, 
+                                                                    baseDataFile, PILookupFile, 
+                                                                    epics, PI)
     
     # Changes since last week
     pattern = re.compile(r'\d{2}\.\d-S\d')
@@ -156,10 +156,11 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
     tables = {'Current Pivot': {'Pivot': cur_pivot,
                                 'Changes Since Last Week': changes_since_last_week,
                                 'Cum Sum': cur_cum_sum,
-                               'Cum Per': cur_cum_per,
-                               'CLIN Per': cur_CLIN_df,
-                               'Sprint Metrics': cur_sprint_metrics,
-                               'Remaining Metrics': cur_rem_metrics},
+                                'Cum Per': cur_cum_per,
+                                'CLIN Per': cur_CLIN_df,
+                                'Sprint Metrics': cur_sprint_metrics,
+                                'Remaining Metrics': cur_rem_metrics,
+                                'Slip': curSlip},
              'Previous Pivot': {'Pivot': prev_pivot,
                                 'Cum Sum': prev_cum_sum,
                                'Cum Per': prev_cum_per,
