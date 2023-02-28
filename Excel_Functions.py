@@ -103,6 +103,14 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
                                     'bg_color': '#ffffff',
                                     'border': True, 'border_color': '#cccccc',
                                     'num_format': '#,##0'})
+    data_format_dec = wb.add_format({'align': 'center',
+                                    'valign': 'top',
+                                     'font_color': 'black',
+                                     'font': 'Calibri', 
+                                     'font_size': 11,
+                                    'bg_color': '#ffffff',
+                                    'border': True, 'border_color': '#cccccc',
+                                    'num_format': '#,##0.00'})
     data_format_per = wb.add_format({'align': 'center',
                                     'valign': 'top',
                                      'font_color': 'black',
@@ -166,7 +174,9 @@ def create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, cl
                     data_format = data_format_per
             # Points metrics
             elif col == 13:
-                data_format_num_delta
+                data_format = data_format_num_delta
+            elif col == stoplight_numcols:
+                data_format = data_format_dec
             else:
                 data_format = data_format_num
             # If a nan, write empty cell
@@ -248,9 +258,13 @@ def create_excel(data, sprint, stoplight_dir,
 
             # Round format
             round_format = wb.add_format({'num_format': '#,##0'})
-            ws.conditional_format(f'{letters[num_cols_sum+5]}{cumper_startrow+2}:{last_col_rem}{cumper_startrow+2+num_epics}',
+            ws.conditional_format(f'{letters[num_cols_sum+5]}{cumper_startrow+2}:{letters[num_cols_sum+num_cols_sprint+num_cols_rem+2]}{cumper_startrow+2+num_epics}',
                                     {'type': 'no_errors',
                                     'format': round_format})
+            round2_format = wb.add_format({'num_format': '#,##0.00'})
+            ws.conditional_format(f'{last_col_rem}{cumper_startrow+2}:{last_col_rem}{cumper_startrow+2+num_epics}',
+                                    {'type': 'no_errors',
+                                    'format': round2_format})
 
             # Columnd widths
             ws.set_column(num_cols_sum+3, num_cols_sum+num_cols_sprint+num_cols_rem+3, 18)
