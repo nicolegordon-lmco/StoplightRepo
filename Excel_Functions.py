@@ -309,20 +309,30 @@ def create_excel(data, sprint, stoplight_dir,
 
     sheets = ['Current Jira Export', 'Previous Jira Export', 'Baseline Jira Export']
     files = [newDataFile, prevDataFile, baseDataFile]
+
     slip_format = wb.add_format({'bg_color': '#cceeff'})
     slips = data['Current Pivot']['Slip'].Key.values
+
+    new_format = wb.add_format({'bg_color': '#ffffcc'})
+    new = data['Current Pivot']['New'].Key.values
 
     for (file, sheet) in zip(files, sheets):
         df = pd.read_excel(file, usecols='A:P')
         df.to_excel(writer, sheet_name=sheet, index=False)   
 
-        # Add conditional formatting for slips
-        if sheet != 'Current Jira Export':
-            ws = writer.sheets[sheet]
+        ws = writer.sheets[sheet]
+        # Add conditional formatting for new and slips
+        if sheet == 'Current Jira Export':
+            for row in range(df.shape[0]):
+                key = df.loc[row, 'Key']
+                if key in new:
+                    ws.conditional_format(f'B{row+2}', 
+                                            {'type': 'no_errors',
+                                            'format': new_format})
+        else:
             for row in range(df.shape[0]):
                 key = df.loc[row, 'Key']
                 if key in slips:
-                    print(key)
                     ws.conditional_format(f'B{row+2}', 
                                             {'type': 'no_errors',
                                             'format': slip_format})
