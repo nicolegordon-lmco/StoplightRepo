@@ -80,6 +80,16 @@ def get_slip(curJira_df, prevJira_df, baseline_df):
         else:
             slip = pd.concat((slip, pd.DataFrame(baseSlip.loc[idx]).transpose()), ignore_index=True)
     return slip
+
+def get_new(curJira_df, prevJira_df, baseline_df):
+    # Keys in each df
+    curKey = curJira_df.Key
+    prevKey = prevJira_df.Key
+    baseKey = baseline_df.Key
+
+    # New keys not in previous or baseline
+    new = curJira_df[(~curKey.isin(prevKey) & ~curKey.isin(baseKey))]
+    return new
     
 def all_pivots(newDataFile, prevDataFile, baseDataFile, PILookupFile, epics, PI):
     # Import new and previous data
@@ -102,4 +112,7 @@ def all_pivots(newDataFile, prevDataFile, baseDataFile, PILookupFile, epics, PI)
     prevSlip_pivot, prevSlip_df = pivot_from_df(prevSlip_df, PILookup_df, epics, PI, slip=True)
     prev_pivot['Slip'] = prevSlip_pivot['Grand Total']
 
-    return cur_pivot, prev_pivot, baseline_pivot, curSlip_df
+    # Get new stories
+    curNew_df = get_new(curJira_df, prevJira_df, baseline_df)
+
+    return cur_pivot, prev_pivot, baseline_pivot, curSlip_df, curNew_df
