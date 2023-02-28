@@ -10,16 +10,13 @@ import regex as re
 from Excel_Functions import *
 from Aggregate import get_aggregated_data, get_stoplight_data
 
-import sys
-
-
 def main(curSprint, lastCompleteSprint, PI,
         newJiraFile, prevJiraFile, baseJiraFile, 
-        stoplight_wdir, PILookupFile):
+        stoplightWdir, PILookupFile):
     # Directory where two excel files will be output
-    stoplight_dir = os.path.join(stoplight_wdir, f'Stoplight_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}')
-    if not os.path.exists(stoplight_dir):
-        os.makedirs(stoplight_dir)
+    stoplightDir = os.path.join(stoplightWdir, f'Stoplight_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}')
+    if not os.path.exists(stoplightDir):
+        os.makedirs(stoplightDir)
         
     # Get all data
     # Epics
@@ -50,58 +47,57 @@ def main(curSprint, lastCompleteSprint, PI,
     # return
     
     # Write all data to excel
-    create_excel(data, lastCompleteSprint, stoplight_dir,
+    create_excel(data, lastCompleteSprint, stoplightDir,
                  newJiraFile, prevJiraFile, baseJiraFile)
 
     # Separate by CLIN
-    stoplight_dict = {}
+    stoplightDict = {}
     for clin in clins:
         stoplight, change_BL = get_stoplight_data(data, clin)
-        stoplight_dict[clin] = {'Data': stoplight, 
+        stoplightDict[clin] = {'Data': stoplight, 
                                'Change_BL': change_BL}
         
     # Write to stoplight excel
-    stoplight_file = os.path.join(stoplight_dir,
+    stoplightFile = os.path.join(stoplightDir,
                                   f'Stoplight_Graphics_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}.xlsx')
-    wb = xlsxwriter.Workbook(stoplight_file)
+    wb = xlsxwriter.Workbook(stoplightFile)
     for clin in clins:
-        create_stoplight_sheet(wb, stoplight_dict, curSprint, lastCompleteSprint, clin)
+        create_stoplight_sheet(wb, stoplightDict, curSprint, lastCompleteSprint, clin)
     wb.close()
     
     return 
 
-
 if __name__ == "__main__":
     # File that contains dates of sprints
-    default_PILookupFile = r"C:\Users\e439931\PMO\Stoplight\PI_Lookup.xlsx"
+    defaultPILookupFile = r"C:\Users\e439931\PMO\Stoplight\PI_Lookup.xlsx"
 
     # Directory where stoplight files will be output
-    default_stoplight_wdir = r'C:\Users\e439931\PMO\Stoplight\Stoplights'
+    defaultStoplightWdir = r'C:\Users\e439931\PMO\Stoplight\Stoplights'
 
     # Get last completed sprint
-    sprint_file = r"C:\Users\e439931\PMO\Stoplight\Sprints.xlsx"
-    sprints = pd.read_excel(sprint_file, header=0)
+    sprintFile = r"C:\Users\e439931\PMO\Stoplight\Sprints.xlsx"
+    sprints = pd.read_excel(sprintFile, header=0)
     today = dt.datetime.today()
-    PI_sprint = sprints[(today > sprints.End)].iloc[-1].Sprint
-    last_complete_sprint = PI_sprint.split('.')[-1]
-    if last_complete_sprint == "IP":
-        last_complete_sprint = 6
-    PI = '.'.join(PI_sprint.split('.')[:2])
+    PISprint = sprints[(today > sprints.End)].iloc[-1].Sprint
+    lastCompleteSprint = PISprint.split('.')[-1]
+    if lastCompleteSprint == "IP":
+        lastCompleteSprint = 6
+    PI = '.'.join(PISprint.split('.')[:2])
 
     # Get current sprint
     # get most recent tuesday
     today = dt.datetime.strptime(dt.datetime.today().date().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
-    today_day = today.weekday()
-    if today_day < 1:
+    todayDay = today.weekday()
+    if todayDay < 1:
         # it is monday
-        last_tuesday = today - dt.timedelta(days=6)
+        lastTuesday = today - dt.timedelta(days=6)
     else:
         # it is not monday
-        last_tuesday = today - dt.timedelta(days=today_day+1)
-    PI_sprint = sprints[((last_tuesday > sprints.Start) & (last_tuesday <= sprints.End))].iloc[0].Sprint
-    cur_sprint = PI_sprint.split('.')[-1]
-    if cur_sprint == "IP":
-        cur_sprint = 6
+        lastTuesday = today - dt.timedelta(days=todayDay+1)
+    PISprint = sprints[((lastTuesday > sprints.Start) & (lastTuesday <= sprints.End))].iloc[0].Sprint
+    curSprint = PISprint.split('.')[-1]
+    if curSprint == "IP":
+        curSprint = 6
 
     description = ("A script that takes in the sprint number and the current, previous, and baseline Jira exports "
                     + "and computes calculations on the data. Outputs one spreadsheet with the Jira data"
@@ -117,28 +113,25 @@ if __name__ == "__main__":
     parser.add_argument('--sprint', 
                         help='INT: Current sprint number', 
                         type=int,
-                        default=cur_sprint)
+                        default=curSprint)
     parser.add_argument('--lastCompleteSprint', 
                         help='INT: Last complete sprint number', 
                         type=int,
-                        default=last_complete_sprint)
+                        default=lastCompleteSprint)
     parser.add_argument('--PILookupFile', 
                         help='Path to PI Lookup file with dates for each PI', 
-                        default=default_PILookupFile)
+                        default=defaultPILookupFile)
     parser.add_argument('--stoplightWdir', 
                         help='Working directory where Stoplight files will be output', 
-                        default=default_stoplight_wdir)
+                        default=defaultStoplightWdir)
     args= parser.parse_args()
 
     # Command to run
-    # python Stoplight.py 
-    # C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230209_Cur.xlsx 
-    # C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230209_Prev.xlsx 
-    # C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230209_Baseline.xlsx 
-    # -sprint=3
+    # python Stoplight.py C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Cur.xlsx C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Prev.xlsx C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Baseline.xlsx 
 
-    data = main(args.sprint, args.lastCompleteSprint, PI, args.newJiraFile.strip('"'), args.prevJiraFile.strip('"'), args.baseJiraFile.strip('"'),
-     args.stoplightWdir.strip('"'), args.PILookupFile.strip('"'))
+    data = main(args.sprint, args.lastCompleteSprint, PI, 
+                args.newJiraFile.strip('"'), args.prevJiraFile.strip('"'), args.baseJiraFile.strip('"'),
+                args.stoplightWdir.strip('"'), args.PILookupFile.strip('"'))
 
 
 
