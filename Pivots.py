@@ -102,4 +102,4 @@ def all_pivots(newDataFile, prevDataFile, baseDataFile, PILookupFile, epics, PI)
     prevSlip_pivot, prevSlip_df = pivot_from_df(prevSlip_df, PILookup_df, epics, PI, slip=True)
     prev_pivot['Slip'] = prevSlip_pivot['Grand Total']
 
-    return cur_pivot, prev_pivot, baseline_pivot
+    return cur_pivot, prev_pivot, baseline_pivot, curSlip_df
