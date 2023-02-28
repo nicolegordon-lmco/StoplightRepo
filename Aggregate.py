@@ -12,8 +12,8 @@ def get_cumsum(pivot):
     return pivot.cumsum(axis=1)
 
 def get_cumper(pivot, cumSum, epics):
-    # Total points in assigned sprint columns will be last column of the cumulative sum df
-    # plus the slipped points
+    # Total points in assigned sprint columns will be last column of 
+    # the cumulative sum df plus the slipped points
     if "Slip" in pivot.columns:
         totals = cumSum.iloc[:, -1] + pivot.Slip.drop('Grand Total')
     else:
@@ -45,7 +45,8 @@ def get_clinPer(cumSum, pivot, clin):
 def get_cum_metrics(pivot, epics, clins):
     # Only use actual sprint data
     pattern = re.compile(r'\d{2}\.\d-S\d')
-    cols = pivot.columns.to_series().apply(find_PI_sprint, args=(pattern,)).dropna().values
+    cols = pivot.columns.to_series().apply(find_PI_sprint, 
+                                           args=(pattern,)).dropna().values
     pivotSprints = pivot.copy()
     pivotSprints = pivotSprints.loc[epics, cols]
     
@@ -140,46 +141,61 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
     changesSinceLastWeek = changesSinceLastWeek.loc[epics, cols]
     
     # Get cumulative metrics
-    (curCumSum, curCumPer, curClinDf) = get_cum_metrics(curPivot, epics, clins)
-    (prevCumSum, prevCumPer, prevCLINDf) = get_cum_metrics(prevPivot, epics, clins)
-    (baselineCumSum, baselineCumPer, baselineCLINDf) = get_cum_metrics(baselinePivot, epics, clins)
+    (curCumSum, curCumPer, curClinDf) = get_cum_metrics(curPivot, 
+                                                        epics, 
+                                                        clins)
+    (prevCumSum, prevCumPer, prevCLINDf) = get_cum_metrics(prevPivot, 
+                                                           epics, 
+                                                           clins)
+    (baselineCumSum, baselineCumPer, baselineCLINDf) = get_cum_metrics(baselinePivot,
+                                                                       epics, 
+                                                                       clins)
     
     # Get sprint metrics
-    curSprintMetrics, curRemMetrics = get_sprint_metrics(curSprint, lastCompleteSprint, curPivot,  
-                                                            curCumSum, baselineCumSum, 
-                                                            baselineCumPer,
-                                                            epics)
-    prevSprintMetrics, prevRemMetrics = get_sprint_metrics(curSprint, lastCompleteSprint, prevPivot,
-                                                                prevCumSum, baselineCumSum, 
-                                                                baselineCumPer,
-                                                                epics)
+    curSprintMetrics, curRemMetrics = get_sprint_metrics(curSprint, 
+                                                         lastCompleteSprint, 
+                                                         curPivot, 
+                                                         curCumSum, 
+                                                         baselineCumSum, 
+                                                         baselineCumPer,
+                                                         epics)
+    prevSprintMetrics, prevRemMetrics = get_sprint_metrics(curSprint, 
+                                                           lastCompleteSprint, 
+                                                           prevPivot, 
+                                                           prevCumSum,
+                                                           baselineCumSum, 
+                                                           baselineCumPer,
+                                                           epics)
     # Summary dict
-    tables = {'Current Pivot': {'Pivot': curPivot,
-                                'Changes Since Last Week': changesSinceLastWeek,
-                                'Cum Sum': curCumSum,
-                                'Cum Per': curCumPer,
-                                'CLIN Per': curClinDf,
-                                'Sprint Metrics': curSprintMetrics,
-                                'Remaining Metrics': curRemMetrics,
-                                'Slip': curSlip,
-                                'New': curNew},
-             'Previous Pivot': {'Pivot': prevPivot,
-                                'Cum Sum': prevCumSum,
-                               'Cum Per': prevCumPer,
-                               'CLIN Per': prevCLINDf,
-                               'Sprint Metrics': prevSprintMetrics,
-                               'Remaining Metrics': prevRemMetrics},
-             'Baseline Pivot': {'Pivot': baselinePivot,
-                                'Cum Sum': baselineCumSum,
-                               'Cum Per': baselineCumPer,
-                               'CLIN Per': baselineCLINDf}}
+    tables = {
+        'Current Pivot': {'Pivot': curPivot,
+                            'Changes Since Last Week': changesSinceLastWeek,
+                            'Cum Sum': curCumSum,
+                            'Cum Per': curCumPer,
+                            'CLIN Per': curClinDf,
+                            'Sprint Metrics': curSprintMetrics,
+                            'Remaining Metrics': curRemMetrics,
+                            'Slip': curSlip,
+                            'New': curNew},
+        'Previous Pivot': {'Pivot': prevPivot,
+                            'Cum Sum': prevCumSum,
+                            'Cum Per': prevCumPer,
+                            'CLIN Per': prevCLINDf,
+                            'Sprint Metrics': prevSprintMetrics,
+                            'Remaining Metrics': prevRemMetrics},
+        'Baseline Pivot': {'Pivot': baselinePivot,
+                            'Cum Sum': baselineCumSum,
+                            'Cum Per': baselineCumPer,
+                            'CLIN Per': baselineCLINDf}
+    }
     
     return tables
 
 
 def merge_baseline_cur(baseline, cur, overall=False):
     # Merge baseline and current
-    df = pd.merge(baseline, cur, left_index=True, right_index=True, suffixes=('_BL', '_Cur'))
+    df = pd.merge(baseline, cur, left_index=True, right_index=True, 
+                  suffixes=('_BL', '_Cur'))
     # Sort columns
     df = df.reindex(sorted(df.columns), axis=1)
     # Rename overall index

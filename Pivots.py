@@ -18,7 +18,8 @@ def create_pivot(df, epics, PI, slip=False):
     # Filters 
     PIFilter = (df.PI == "PI 23.1")
     levelFilter = (df.Level == "Team")
-    issueTypeFilter = ((df['Issue Type'] == "Enabler") | (df['Issue Type'] == "Story"))
+    issueTypeFilter = ((df['Issue Type'] == "Enabler") 
+                       | (df['Issue Type'] == "Story"))
     epicFilter = df.Epic.apply(lambda x: x in epics)
     filters = (PIFilter & levelFilter & issueTypeFilter & epicFilter)
 
@@ -33,11 +34,11 @@ def create_pivot(df, epics, PI, slip=False):
     dfFiltered['Σ Story Points'].fillna(0, inplace=True)
 
     summaryPivot = dfFiltered.pivot_table(values='Σ Story Points', 
-                                              index='Epic', 
-                                              columns='PI-Sprint', 
-                                              aggfunc='sum',
-                                              margins=True,
-                                              margins_name=marginsName)
+                                            index='Epic', 
+                                            columns='PI-Sprint', 
+                                            aggfunc='sum',
+                                            margins=True,
+                                            margins_name=marginsName)
 
     # If slip pivot, need to add epics that don't have slip points
     if slip:
@@ -78,7 +79,9 @@ def get_slip(curJiraDf, prevJiraDf, baselineDf):
         if baseSlip.loc[idx, 'Key'] in prevSlip.Key.values:
             continue
         else:
-            slip = pd.concat((slip, pd.DataFrame(baseSlip.loc[idx]).transpose()), ignore_index=True)
+            slip = pd.concat((slip, 
+                              pd.DataFrame(baseSlip.loc[idx]).transpose()), 
+                             ignore_index=True)
     return slip
 
 def get_new(curJiraDf, prevJiraDf, baselineDf):
@@ -96,20 +99,41 @@ def all_pivots(newDataFile, prevDataFile, baseDataFile, PILookupFile, epics, PI)
     curJiraDf = pd.read_excel(newDataFile, usecols='A:P')
     prevJiraDf = pd.read_excel(prevDataFile, usecols='A:P')
     baselineDf = pd.read_excel(baseDataFile, usecols='A:P')
-    PILookupDf = pd.read_excel(PILookupFile, sheet_name = 'PI Lookup', parse_dates=['Start', 'End'])
+    PILookupDf = pd.read_excel(PILookupFile, sheet_name = 'PI Lookup', 
+                               parse_dates=['Start', 'End'])
     
     # Create pivots
-    curPivot, curJiraDf = pivot_from_df(curJiraDf, PILookupDf, epics, PI, jira="Current")
-    prevPivot, prevJiraDf = pivot_from_df(prevJiraDf, PILookupDf, epics, PI, jira="Previous")
-    baselinePivot, baselineDf = pivot_from_df(baselineDf, PILookupDf, epics, PI, jira="Baseline")
+    curPivot, curJiraDf = pivot_from_df(curJiraDf, 
+                                        PILookupDf, 
+                                        epics,
+                                        PI, 
+                                        jira="Current")
+    prevPivot, prevJiraDf = pivot_from_df(prevJiraDf, 
+                                          PILookupDf, 
+                                          epics, 
+                                          PI, 
+                                          jira="Previous")
+    baselinePivot, baselineDf = pivot_from_df(baselineDf, 
+                                              PILookupDf, 
+                                              epics, 
+                                              PI, 
+                                              jira="Baseline")
 
     # Add slip
     curSlipDf = get_slip(curJiraDf, prevJiraDf, baselineDf)
-    curSlipPivot, curSlipDf = pivot_from_df(curSlipDf, PILookupDf, epics, PI, slip=True)
+    curSlipPivot, curSlipDf = pivot_from_df(curSlipDf, 
+                                            PILookupDf, 
+                                            epics, 
+                                            PI, 
+                                            slip=True)
     curPivot['Slip'] = curSlipPivot['Grand Total']
 
     prevSlipDf = get_slip(prevJiraDf, prevJiraDf, baselineDf)
-    prevSlipPivot, prevSlipDf = pivot_from_df(prevSlipDf, PILookupDf, epics, PI, slip=True)
+    prevSlipPivot, prevSlipDf = pivot_from_df(prevSlipDf, 
+                                              PILookupDf, 
+                                              epics, 
+                                              PI, 
+                                              slip=True)
     prevPivot['Slip'] = prevSlipPivot['Grand Total']
 
     # Get new stories

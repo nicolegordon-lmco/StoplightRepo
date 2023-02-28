@@ -10,8 +10,9 @@ import sys
 def testIndexes(x, jira):
     """Function to test if Index is valid"""
     if isinstance(x, float): 
-        print(f"Invalid Index: {x}. Please check the {jira} Jira export file" \
-               " for missing or extra rows and rerun. Now exiting...")
+        print(f"Invalid Index: {x}. Please check the {jira} Jira " \
+               "export file for missing or extra rows and rerun. " \
+                "Now exiting...")
         sys.exit()
 
 def split_level(df, filterCondition, applyFunc, fillNA):
@@ -41,12 +42,14 @@ def get_PILookup(df, PILookupDf, jira):
         if pd.isna(date):
             PILookup[idx] = np.nan
         elif isinstance(date, (float, int)):
-            print(f"Invalid PLanned Start Date: {date}. Please check the {jira} Jira export file" \
-                    " for invalid dates. Now exiting...")    
+            print(f"Invalid PLanned Start Date: {date}. " \
+                  "Please check the {jira} Jira export file" \
+                  " for invalid dates. Now exiting...")    
             sys.exit()
         else: 
             for i in PILookupDf.index:
-                if ((date >= PILookupDf.loc[i, 'Start']) & (date <= PILookupDf.loc[i, 'End'])):
+                if ((date >= PILookupDf.loc[i, 'Start']) 
+                    & (date <= PILookupDf.loc[i, 'End'])):
                     PILookup[idx] = PILookupDf.loc[i, 'PI']
                     break
     return list(PILookup.values())
@@ -104,9 +107,9 @@ def get_attributes(df, PILookupDf, jira, featureLevel=3):
                                         lambda x: '.'.join(x[:2]), 
                                         np.nan)})
     idCapabilityFill = split_level_key(idCapabilityTemp, 
-                                          df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
-                                          lambda x: x[0], 
-                                          df.Key)
+                                        df.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
+                                        lambda x: x[0], 
+                                        df.Key)
     idCapabilityTemp.Key.fillna(idCapabilityFill, inplace=True)
     df['ID: Capability'] = idCapabilityTemp.Key + ": " + df['Capability']
 
@@ -114,14 +117,15 @@ def get_attributes(df, PILookupDf, jira, featureLevel=3):
     featuresDf = df[df['Index Level'] == 3] [['Index', 'Key', 'Summary']]
     featuresDf['feature'] = featuresDf.Key + ": " + featuresDf.Summary
     featuresDict = (featuresDf
-                     .set_index('Index')
-                     .to_dict()['feature'])
+                    .set_index('Index')
+                    .to_dict()['feature'])
     df['Feature'] = (df.Index.str.split('.').apply(lambda x: '.'.join(x[:3]))
-                               .map(featuresDict)
-                               .fillna(np.nan))
+                                            .map(featuresDict)
+                                            .fillna(np.nan))
 
     df['Features'] = df['Key'] + ": " + df['Summary']
-    df['Features'].where(df['Index Level'] == df['Feature Level'], np.nan, inplace=True)
+    df['Features'].where(df['Index Level'] == df['Feature Level'], 
+                         np.nan, inplace=True)
 
     # PI Lookup
     df['PI Lookup'] = get_PILookup(df, PILookupDf, jira)
@@ -133,14 +137,16 @@ def get_attributes(df, PILookupDf, jira, featureLevel=3):
     df['PI'] = np.nan
     definedSprint = (df['N-Sprint'] >= 1)
     pattern = re.compile(r"PI \d{2}\.\d")
-    df.loc[definedSprint, 'PI'] = df.Sprint.apply(find_PI_sprint, args=(pattern,))
+    df.loc[definedSprint, 'PI'] = df.Sprint.apply(find_PI_sprint, 
+                                                  args=(pattern,))
     backlog = df.Sprint.str.startswith('Backlog').fillna(False)
     df.loc[backlog, 'PI'] = ['Backlog'] * backlog.sum()
     df['PI'].fillna(df['PI Lookup'], inplace=True)
 
     # Sprint Num
     pattern = re.compile(r"PI \d{2}\.\d - S\d")
-    df['Sprint Num'] = df.Sprint.apply(find_PI_sprint, args=(pattern, False,))
+    df['Sprint Num'] = df.Sprint.apply(find_PI_sprint, 
+                                       args=(pattern, False,))
 
     # PI-Sprint
     pattern = re.compile(r"\d{2}\.\d")

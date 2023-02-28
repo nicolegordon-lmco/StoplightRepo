@@ -139,7 +139,8 @@ def create_excel(data, sprint, stoplightDir,
     for sheet in data.keys():
         ws = wb.add_worksheet(sheet)
         writer.sheets[sheet] = ws
-        data[sheet]['Pivot'].to_excel(writer, sheet_name=sheet, startrow=1 , startcol=0, freeze_panes=(0,1)) 
+        data[sheet]['Pivot'].to_excel(writer, sheet_name=sheet, startrow=1 , 
+                                      startcol=0, freeze_panes=(0,1)) 
         numEpics = data[sheet]['Pivot'].shape[0]
         numColsSum = data[sheet]["Pivot"].shape[1]
         numColsCum = data[sheet]["Cum Sum"].shape[1]
@@ -148,11 +149,14 @@ def create_excel(data, sprint, stoplightDir,
         lastColCum = letters[numColsCum]
 
         cumSumStartRow = numEpics + 4
-        data[sheet]['Cum Sum'].to_excel(writer, sheet_name=sheet, startrow=cumSumStartRow, startcol=0) 
+        data[sheet]['Cum Sum'].to_excel(writer, sheet_name=sheet, 
+                                        startrow=cumSumStartRow, startcol=0) 
         cumPerStartRow = numEpics*2+6
-        data[sheet]['Cum Per'].to_excel(writer, sheet_name=sheet, startrow=cumPerStartRow, startcol=0) 
+        data[sheet]['Cum Per'].to_excel(writer, sheet_name=sheet, 
+                                        startrow=cumPerStartRow, startcol=0) 
         clinStartRow = numEpics*3+7
-        data[sheet]['CLIN Per'].to_excel(writer, sheet_name=sheet, startrow=clinStartRow, startcol=0) 
+        data[sheet]['CLIN Per'].to_excel(writer, sheet_name=sheet, 
+                                         startrow=clinStartRow, startcol=0) 
 
         # header format
         titleFormat = wb.add_format(formats['title'])
@@ -185,7 +189,8 @@ def create_excel(data, sprint, stoplightDir,
             data[sheet]['Sprint Metrics'].to_excel(writer, sheet_name=sheet,
                                                    startrow=cumPerStartRow, startcol=numColsSum+2) 
             data[sheet]['Remaining Metrics'].to_excel(writer, sheet_name=sheet,
-                                                        startrow=cumPerStartRow, startcol=numColsSum+numColsSprint+4,
+                                                        startrow=cumPerStartRow, 
+                                                        startcol=numColsSum+numColsSprint+4,
                                                         index=False) 
             ws.set_column(numColsSum+2, numColsSum+2, 60)
 
@@ -206,8 +211,10 @@ def create_excel(data, sprint, stoplightDir,
                 numColsChange = data[sheet]['Changes Since Last Week'].shape[1]
                 lastColChange = letters[numColsSum+2+numColsChange]
                 # Changes since last week
-                data[sheet]['Changes Since Last Week'].to_excel(writer, sheet_name=sheet, 
-                                                                startrow=1 , startcol=numColsSum+2)  
+                data[sheet]['Changes Since Last Week'].to_excel(writer, 
+                                                                sheet_name=sheet, 
+                                                                startrow=1 , 
+                                                                startcol=numColsSum+2)  
                 
                 # Add header
                 ws.merge_range(f'{firstColChange}1:{lastColChange}1',
