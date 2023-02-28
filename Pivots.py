@@ -50,14 +50,14 @@ def create_pivot(df, epics, PI, slip=False):
     return summary_pivot
 
 
-def pivot_from_df(df, PILookup_df, epics, PI, slip=False):
+def pivot_from_df(df, PILookup_df, epics, PI, slip=False, jira=None):
     # If slip_df, data is already cleaned and attributes added
     # Only need to create the pivot
     if slip: 
         pivot_table = create_pivot(df, epics, PI, slip)
         return pivot_table, df
     df = clean_data(df)
-    df = get_attributes(df, PILookup_df)
+    df = get_attributes(df, PILookup_df, jira)
     pivot_table = create_pivot(df, epics, PI)
     return pivot_table, df
 
@@ -89,9 +89,9 @@ def all_pivots(newDataFile, prevDataFile, baseDataFile, PILookupFile, epics, PI)
     PILookup_df = pd.read_excel(PILookupFile, sheet_name = 'PI Lookup', parse_dates=['Start', 'End'])
     
     # Create pivots
-    cur_pivot, curJira_df = pivot_from_df(curJira_df, PILookup_df, epics, PI)
-    prev_pivot, prevJira_df = pivot_from_df(prevJira_df, PILookup_df, epics, PI)
-    baseline_pivot, baseline_df = pivot_from_df(baseline_df, PILookup_df, epics, PI)
+    cur_pivot, curJira_df = pivot_from_df(curJira_df, PILookup_df, epics, PI, jira="Current")
+    prev_pivot, prevJira_df = pivot_from_df(prevJira_df, PILookup_df, epics, PI, jira="Previous")
+    baseline_pivot, baseline_df = pivot_from_df(baseline_df, PILookup_df, epics, PI, jira="Baseline")
 
     # Add slip
     curSlip_df = get_slip(curJira_df, prevJira_df, baseline_df)

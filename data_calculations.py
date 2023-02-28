@@ -5,6 +5,14 @@
 import pandas as pd
 import numpy as np
 import regex as re
+import sys
+
+def testIndexes(x, jira):
+    """Function to test if Index is valid"""
+    if isinstance(x, float): 
+        print(f"Invalid Index: {x}. Please check the {jira} Jira export file" \
+               " for missing or extra rows and rerun. Now exiting...")
+        sys.exit()
 
 def split_level(df, filter_condition, apply_func, fill_na):
     """Function to split into levels by Summary""" 
@@ -26,12 +34,16 @@ def split_level_key(df, filter_condition, apply_func, fill_na):
                    .fillna(fill_na))
     return new_series
 
-def get_PI_Lookup(df, PILookup_df):
+def get_PI_Lookup(df, PILookup_df, jira):
     """Get PI dates from excel file"""
     PI_lookup = {}
     for idx, date in zip(df['Index'], df['Planned Start Date']):
         if pd.isna(date):
             PI_lookup[idx] = np.nan
+        elif isinstance(date, (float, int)):
+            print(f"Invalid PLanned Start Date: {date}. Please check the {jira} Jira export file" \
+                    " for invalid dates. Now exiting...")    
+            sys.exit()
         else: 
             for i in PILookup_df.index:
                 if ((date >= PILookup_df.loc[i, 'Start']) & (date <= PILookup_df.loc[i, 'End'])):
@@ -54,7 +66,10 @@ def find_team(string):
         return np.nan
     return string[match_idx+7:]
 
-def get_attributes(df, PILookup_df, feature_level=3):
+def get_attributes(df, PILookup_df, jira, feature_level=3):
+    # Make sure all indexes are valid
+    df.Index.apply(lambda x: testIndexes(x, jira))
+
     # Index Level
     df['Index Level'] = df.Index.str.count("\.") + 1
 
@@ -109,7 +124,7 @@ def get_attributes(df, PILookup_df, feature_level=3):
     df['Features'].where(df['Index Level'] == df['Feature Level'], np.nan, inplace=True)
 
     # PI Lookup
-    df['PI Lookup'] = get_PI_Lookup(df, PILookup_df)
+    df['PI Lookup'] = get_PI_Lookup(df, PILookup_df, jira)
 
     # N-Sprint
     df['N-Sprint'] = df.Sprint.str.count(',') + 1
