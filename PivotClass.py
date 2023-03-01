@@ -4,24 +4,19 @@ import sys
 import re
 
 class Pivot:
-    def __init__(self, jiraFile, PILookupFile, epics, PI, jira=None, slip=False):
+    def __init__(self, jiraFile, PILookupFile, epics, clins, PI, jira):
         self.JiraDf = pd.read_excel(jiraFile, usecols='A:P')
         self.PILookupDf = pd.read_excel(PILookupFile, 
                                         sheet_name = 'PI Lookup', 
                                         parse_dates=['Start', 'End'])
         self.epics = epics
+        self.clins = clins
         self.PI = PI
         self.jira = jira
-        self.slip = slip
-
-        # If slipDf, data is already cleaned and attributes added
-        # Only need to create the pivot
-        if self.slip: 
-            self.set_pivot()
 
         self.clean_data()
         self.set_attributes()
-        self.set_pivot()
+        self.pivotTable = self.get_pivot()
     
     def clean_data(self):
         # Fill dates for start and end
@@ -133,17 +128,19 @@ class Pivot:
         self.JiraDf.loc[team,"Level"] = 'Team'
         self.JiraDf.Level.fillna('ART', inplace=True)
 
-    def set_pivot(self):
+    def get_pivot(self, df=None, slip=False):
+        if df is None:
+            df = self.JiraDf
         # Filters 
-        PIFilter = (self.JiraDf.PI == self.PI)
-        levelFilter = (self.JiraDf.Level == "Team")
-        issueTypeFilter = ((self.JiraDf['Issue Type'] == "Enabler") 
-                        | (self.JiraDf['Issue Type'] == "Story"))
-        epicFilter = self.JiraDf.Epic.apply(lambda x: x in self.epics)
+        PIFilter = (df.PI == f"PI {self.PI}")
+        levelFilter = (df.Level == "Team")
+        issueTypeFilter = ((df['Issue Type'] == "Enabler") 
+                        | (df['Issue Type'] == "Story"))
+        epicFilter = df.Epic.apply(lambda x: x in self.epics)
         filters = (PIFilter & levelFilter & issueTypeFilter & epicFilter)
 
         # Pivot table
-        dfFiltered = self.JiraDf.copy()
+        dfFiltered = df.copy()
         dfFiltered = dfFiltered[filters]
         marginsName = 'Grand Total'
 
@@ -160,14 +157,14 @@ class Pivot:
                                                 margins_name=marginsName)
 
         # If slip pivot, need to add epics that don't have slip points
-        if self.slip:
+        if slip:
             for epic in self.epics:
                 if epic not in summaryPivot.index.values:
                     summaryPivot.loc[epic] = 0
 
         pivotOrder = self.epics + [marginsName]
         summaryPivot = summaryPivot.loc[pivotOrder, :].fillna(0)
-        self.pivotTable = summaryPivot
+        return summaryPivot
 
     def testIndexes(self, x):
         """Function to test if Index is valid"""
@@ -177,9 +174,9 @@ class Pivot:
                     "Now exiting...")
             sys.exit()
 
-    def split_level(df, filterCondition, applyFunc, fillNA, split_by='Summary'):
+    def split_level(self, df, filterCondition, applyFunc, fillNA, split_by='Summary'):
         """Function to split into levels by Summary""" 
-        featureDict = (df[filterCondition] [['Index', split_by]]
+        featureDict = (df[filterCondition][['Index', split_by]]
                         .set_index('Index')
                         .to_dict()[split_by])
         newSeries = (df.Index.str.split('.').apply(applyFunc)
@@ -206,7 +203,7 @@ class Pivot:
                         break
         return list(PILookup.values())
     
-    def get_PI_sprint(string, pattern, PI=True):
+    def get_PI_sprint(self, string, pattern, PI=True):
         matches = pattern.findall(str(string))
         if not matches:
             return np.nan
@@ -215,8 +212,170 @@ class Pivot:
         else:
             return matches[-1][-2:]
         
-    def get_team(string):
+    def get_team(self, string):
         match_idx = str(string).rfind("PCM_GD_")
         if match_idx == -1:
             return np.nan
         return string[match_idx+7:]
+    
+    def set_slip(self, prevJiraDf, baselineDf):
+        # Keys in each df
+        curKey = self.JiraDf.Key
+        prevKey = prevJiraDf.Key
+        baseKey = baselineDf.Key
+
+        # Keys that have slipped from previous or baseline
+        prevSlip = prevJiraDf[(~prevKey.isin(curKey))]
+        baseSlip = baselineDf[(~baseKey.isin(curKey))]
+
+        # Start slip df with slips from previous Jira df
+        slipDf = prevSlip.copy()
+        # Add in slips from the baseline
+        for idx in baseSlip.index:
+            if baseSlip.loc[idx, 'Key'] in prevSlip.Key.values:
+                continue
+            else:
+                slipDf = pd.concat((slipDf, 
+                                    pd.DataFrame(baseSlip.loc[idx]).transpose()), 
+                                    ignore_index=True)
+        self.slipDf = slipDf
+        self.slipPivotTable = self.get_pivot(df=self.slipDf, slip=True)
+        self.pivotTable['Slip'] = self.slipPivotTable['Grand Total']
+
+    def set_new(self, prevJiraDf, baselineDf):
+        # Keys in each df
+        curKey = self.JiraDf.Key
+        prevKey = prevJiraDf.Key
+        baseKey = baselineDf.Key
+
+        # New keys not in previous or baseline
+        new = self.JiraDf[(~curKey.isin(prevKey) & ~curKey.isin(baseKey))]
+        self.newDf = new
+
+    def set_weekly_change(self, prevPivot):
+        # Changes since last week
+        pattern = re.compile(r'\d{2}\.\d-S\d')
+        changesSinceLastWeek = self.pivotTable - prevPivot
+        cols = (changesSinceLastWeek.columns.to_series()
+                .apply(self.get_PI_sprint, args=(pattern,))
+                .dropna().values)
+        cols = np.append(cols, ['Slip', 'Grand Total'])
+        changesSinceLastWeek = changesSinceLastWeek.loc[self.epics, 
+                                                        cols]
+        self.changesWeek = changesSinceLastWeek
+
+    def get_cumsum(self, pivot):
+        return pivot.cumsum(axis=1)
+
+    def get_cumper(self):
+        # Total points in assigned sprint columns will be last column of 
+        # the cumulative sum df plus the slipped points
+        if "Slip" in self.pivotTable.columns:
+            totals = (self.cumSum.iloc[:, -1] 
+                      + self.pivotTable.Slip.drop('Grand Total'))
+        else:
+            totals = self.cumSum.iloc[:, -1]
+
+        # Reshape
+        totals = (totals
+                .values
+                .repeat(self.cumSum.shape[1])
+                .reshape(self.cumSum.shape))
+        cumPer = (self.cumSum / totals)
+        return cumPer
+    
+    @staticmethod
+    def get_clin(df, clin):
+        clinIdx = df.index.to_series().apply(lambda x: clin in x)
+        return df[clinIdx]
+    
+    def get_clinPer(self, clin):
+        # Only use assigned sprint columns, plus slip if applicable
+        curClin = self.get_clin(self.cumSum, clin)
+        if 'Slip' in self.pivotTable.columns:
+            curClinSlip = self.get_clin(self.pivotTable, clin).Slip
+            total = (curClin.iloc[:, -1] + curClinSlip).values.sum()
+        else:
+            total = curClin.iloc[:, -1].values.sum() 
+        clinPer = self.get_clin(self.cumSum, clin).sum() / total
+        return clinPer
+
+    def set_cum_metrics(self):
+        # Only use actual sprint data
+        pattern = re.compile(r'\d{2}\.\d-S\d')
+        cols = (self.pivotTable.columns
+                .to_series().apply(self.get_PI_sprint, 
+                                    args=(pattern,))
+                                    .dropna().values)
+        pivotSprints = self.pivotTable.copy()
+        pivotSprints = pivotSprints.loc[self.epics, cols]
+        
+        # Points cumulative sum 
+        self.cumSum = self.get_cumsum(pivotSprints)
+        
+        # Points cumulative percentage
+        self.cumPer = self.get_cumper()
+        
+        # CLIN breakout
+        CLINDf = pd.DataFrame()
+        for clin in self.clins:
+            clinPer = self.get_clinPer(clin)
+            CLINDf[clin] = clinPer
+        CLINDf = CLINDf.transpose()
+        self.clinDf = CLINDf
+
+    def set_sprint_metrics(self, curSprint, lastCompleteSprint,
+                            baselineCumSum, baselineCumPer):
+        # Current total (Points in sprint plus slip)
+        cumSumTot = self.cumSum.iloc[:, -1].values 
+        slip = self.pivotTable.Slip.drop(['Grand Total'])
+        curTotal = cumSumTot + slip
+        
+        # Change since baseline
+        baselineTotal = baselineCumSum.iloc[:, -1].values
+        baselineChange = curTotal - baselineTotal
+        
+        # Points expected
+        lastPattern = re.compile(fr'\d\d\.\d-S{lastCompleteSprint}')
+        col = (baselineCumPer.columns.to_series()
+            .apply(self.get_PI_sprint, args=(lastPattern,))
+            .dropna().values[0])
+        pointsExpected = (baselineCumPer.loc[self.epics, col] * curTotal)
+        
+        # Points completed
+        col = (self.cumSum.columns.to_series()
+            .apply(self.get_PI_sprint, args=(lastPattern,))
+            .dropna().values[0])
+        pointsCompleted = self.cumSum.loc[self.epics, col]
+
+        # Current completed
+        curPattern = re.compile(fr'\d\d\.\d-S{curSprint}')
+        col = (self.cumSum.columns.to_series()
+            .apply(self.get_PI_sprint, args=(curPattern,))
+            .dropna().values[0])
+        curPointsCompleted = self.cumSum.loc[self.epics, col]
+        
+        # Delta
+        delta = pointsCompleted - pointsExpected
+
+        # Points remaining
+        pointsRem = curTotal - pointsCompleted
+
+        # Velocity
+        vel = pointsCompleted / lastCompleteSprint
+
+        # Sprints left
+        sprintsRem = pointsRem / vel
+        
+        # Data frame
+        sprintMetricsDf = pd.DataFrame({'Current Total Pts': curTotal,
+                                        'Change Since BL': baselineChange,
+                                        'Points Expected': pointsExpected,
+                                        'Points Completed': pointsCompleted,
+                                        'Delta Points': delta,
+                                        'Current Completed': curPointsCompleted})
+        remainingSprintMetrics = pd.DataFrame({'Points Remaining': pointsRem,
+                                                'Velocity': vel, 
+                                                'Sprints Remaining': sprintsRem})
+        self.sprintMetrics = sprintMetricsDf
+        self.remainingSprintMetrics = remainingSprintMetrics
