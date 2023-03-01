@@ -43,7 +43,7 @@ def get_PILookup(df, PILookupDf, jira):
             PILookup[idx] = np.nan
         elif isinstance(date, (float, int)):
             print(f"Invalid PLanned Start Date: {date}. " \
-                  "Please check the {jira} Jira export file" \
+                  f"Please check the {jira} Jira export file" \
                   " for invalid dates. Now exiting...")    
             sys.exit()
         else: 
