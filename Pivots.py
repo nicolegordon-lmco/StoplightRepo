@@ -16,7 +16,7 @@ def clean_data(df):
 
 def create_pivot(df, epics, PI, slip=False):
     # Filters 
-    PIFilter = (df.PI == "PI 23.1")
+    PIFilter = (df.PI == PI)
     levelFilter = (df.Level == "Team")
     issueTypeFilter = ((df['Issue Type'] == "Enabler") 
                        | (df['Issue Type'] == "Story"))
