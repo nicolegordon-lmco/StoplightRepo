@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import sys
 import re
+import string
+from format import formats
 
 class Pivot:
     def __init__(self, jiraFile, PILookupFile, epics, clins, PI, jira):
@@ -13,6 +15,8 @@ class Pivot:
         self.clins = clins
         self.PI = PI
         self.jira = jira
+        self.sheetPivot = f"{self.jira} Pivot"
+        self.sheetJira = f"{self.jira} Jira Export"
 
         self.clean_data()
         self.set_attributes()
@@ -326,6 +330,9 @@ class Pivot:
 
     def set_sprint_metrics(self, curSprint, lastCompleteSprint,
                             baselineCumSum, baselineCumPer):
+        # Set last complete sprint
+        self.lastCompleteSprint = lastCompleteSprint
+
         # Current total (Points in sprint plus slip)
         cumSumTot = self.cumSum.iloc[:, -1].values 
         slip = self.pivotTable.Slip.drop(['Grand Total'])
@@ -379,3 +386,127 @@ class Pivot:
                                                 'Sprints Remaining': sprintsRem})
         self.sprintMetrics = sprintMetricsDf
         self.remainingSprintMetrics = remainingSprintMetrics
+
+    def excel_pivot(self, writer):
+        letters = string.ascii_uppercase
+        wb = writer.book
+
+        ws = wb.add_worksheet(self.sheetPivot)
+        writer.sheets[self.sheetPivot] = ws
+        self.pivotTable.to_excel(writer, sheet_name=self.sheetPivot, startrow=1 , 
+                                    startcol=0, freeze_panes=(0,1)) 
+        numEpics = self.pivotTable.shape[0]
+        numColsSum = self.pivotTable.shape[1]
+        numColsCum = self.cumSum.shape[1]
+        
+        lastColSum = letters[numColsSum]
+        lastColCum = letters[numColsCum]
+
+        cumSumStartRow = numEpics + 4
+        self.cumSum.to_excel(writer, sheet_name=self.sheetPivot, 
+                                        startrow=cumSumStartRow, startcol=0) 
+        cumPerStartRow = numEpics*2+6
+        self.cumPer.to_excel(writer, sheet_name=self.sheetPivot, 
+                                        startrow=cumPerStartRow, startcol=0) 
+        clinStartRow = numEpics*3+7
+        self.clinDf.to_excel(writer, sheet_name=self.sheetPivot, 
+                                        startrow=clinStartRow, startcol=0) 
+
+        # header format
+        titleFormat = wb.add_format(formats['title'])
+
+        # Pergentage format
+        percentFormat = wb.add_format({'num_format': '0%'})
+        
+        ws.conditional_format(f'B{cumPerStartRow+2}:{lastColCum}{cumPerStartRow+2+numEpics}', 
+                                {'type': 'no_errors',
+                                'format': percentFormat})
+        ws.conditional_format(f'B{clinStartRow+2}:{lastColCum}{clinStartRow+4}', 
+                                {'type': 'no_errors',
+                                'format': percentFormat})
+
+        # Extra tables
+        if (self.sheetPivot == 'Current Pivot') | (self.sheetPivot == 'Previous Pivot'):
+            numColsSprint = self.sprintMetrics.shape[1]
+            numColsRem = self.remainingSprintMetrics.shape[1]
+            firstColChange = letters[numColsSum+2]
+            lastColSprint = letters[numColsSum+numColsSprint+2]
+            firstColRem = letters[numColsSum+numColsSprint+4]
+            lastColRem = letters[numColsSum+numColsSprint+numColsRem+3]
+
+            # Sprint table and remaining table
+            ws.merge_range(f'{firstColChange}{cumPerStartRow}:{lastColSprint}{cumPerStartRow}',
+                    f'Sprint {self.lastCompleteSprint}', titleFormat)
+            ws.merge_range(f'{firstColRem}{cumPerStartRow}:{lastColRem}{cumPerStartRow}',
+                    f'Sprint {self.lastCompleteSprint}', titleFormat)
+            
+            self.sprintMetrics.to_excel(writer, sheet_name=self.sheetPivot,
+                                                startrow=cumPerStartRow, startcol=numColsSum+2) 
+            self.remainingSprintMetrics.to_excel(writer, sheet_name=self.sheetPivot,
+                                                        startrow=cumPerStartRow, 
+                                                        startcol=numColsSum+numColsSprint+4,
+                                                        index=False) 
+            ws.set_column(numColsSum+2, numColsSum+2, 60)
+
+            # Round format
+            roundFormat = wb.add_format({'num_format': '#,##0'})
+            ws.conditional_format(f'{letters[numColsSum+5]}{cumPerStartRow+2}:{letters[numColsSum+numColsSprint+numColsRem+2]}{cumPerStartRow+2+numEpics}',
+                                    {'type': 'no_errors',
+                                    'format': roundFormat})
+            round2Format = wb.add_format({'num_format': '#,##0.00'})
+            ws.conditional_format(f'{lastColRem}{cumPerStartRow+2}:{lastColRem}{cumPerStartRow+2+numEpics}',
+                                    {'type': 'no_errors',
+                                    'format': round2Format})
+
+            # Columnd widths
+            ws.set_column(numColsSum+3, numColsSum+numColsSprint+numColsRem+3, 18)
+
+            if self.sheetPivot == 'Current Pivot':
+                numColsChange = self.changesWeek.shape[1]
+                lastColChange = letters[numColsSum+2+numColsChange]
+                # Changes since last week
+                self.changesWeek.to_excel(writer, 
+                                                                sheet_name=self.sheetPivot, 
+                                                                startrow=1 , 
+                                                                startcol=numColsSum+2)  
+                
+                # Add header
+                ws.merge_range(f'{firstColChange}1:{lastColChange}1',
+                            'Changes Since Last Week', titleFormat)
+                
+                # Add cell formatting to changes since last week
+                redFormat = wb.add_format(formats['redDelta'])
+                lastRow = self.changesWeek.shape[0] + 2
+                ws.conditional_format(f'{letters[numColsSum+3]}3:{lastColChange}{lastRow}', 
+                                        {'type': 'cell',
+                                        'criteria': '!=',
+                                        'value': 0,
+                                        'format': redFormat})
+        wb.close()
+    
+    def format_keys(self, keys, format, ws):
+        for row in range(self.JiraDf.shape[0]):
+            key = self.JiraDf.loc[row, 'Key']
+            if key in keys:
+                ws.conditional_format(f'B{row+2}', 
+                                        {'type': 'no_errors',
+                                        'format': format})
+                
+    def excel_Jira(self, writer):
+        wb = writer.book
+
+        self.JiraDf.to_excel(writer, sheet_name=self.sheetJira, index=False)   
+
+        ws = writer.sheets[self.sheetJira]
+        # Add conditional formatting for new and slips
+        if self.sheetJira == 'Current Jira Export':
+            newFormat = wb.add_format(formats['newStories'])
+            newStories = self.newDf.Key.values
+            self.format_keys(newStories, newFormat, ws)
+        else:
+            slipFormat = wb.add_format(formats['slipStories'])
+            slipStories = self.slipDfKey.values
+            self.format_keysformat_keys(slipStories, slipFormat, ws)
+        wb.close()
+
+    
