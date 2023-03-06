@@ -8,10 +8,13 @@ import regex as re
 from Pivots import *
 from data_calculations import find_PI_sprint
 
+from PivotClass import Pivot
+import sys
+
 def get_cumsum(pivot):
     return pivot.cumsum(axis=1)
 
-def get_cumper(pivot, cumSum, epics):
+def get_cumper(pivot, cumSum):
     # Total points in assigned sprint columns will be last column of 
     # the cumulative sum df plus the slipped points
     if "Slip" in pivot.columns:
@@ -54,7 +57,7 @@ def get_cum_metrics(pivot, epics, clins):
     cumSum = get_cumsum(pivotSprints)
     
     # Points cumulative percentage
-    cumPer = get_cumper(pivot, cumSum, epics)
+    cumPer = get_cumper(pivot, cumSum)
     
     # CLIN breakout
     CLINDf = pd.DataFrame()
@@ -144,10 +147,10 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
     (curCumSum, curCumPer, curClinDf) = get_cum_metrics(curPivot, 
                                                         epics, 
                                                         clins)
-    (prevCumSum, prevCumPer, prevCLINDf) = get_cum_metrics(prevPivot, 
+    (prevCumSum, prevCumPer, prevClinDf) = get_cum_metrics(prevPivot, 
                                                            epics, 
                                                            clins)
-    (baselineCumSum, baselineCumPer, baselineCLINDf) = get_cum_metrics(baselinePivot,
+    (baselineCumSum, baselineCumPer, baselineClinDf) = get_cum_metrics(baselinePivot,
                                                                        epics, 
                                                                        clins)
     
@@ -180,13 +183,13 @@ def get_aggregated_data(curSprint, lastCompleteSprint,
         'Previous Pivot': {'Pivot': prevPivot,
                             'Cum Sum': prevCumSum,
                             'Cum Per': prevCumPer,
-                            'CLIN Per': prevCLINDf,
+                            'CLIN Per': prevClinDf,
                             'Sprint Metrics': prevSprintMetrics,
                             'Remaining Metrics': prevRemMetrics},
         'Baseline Pivot': {'Pivot': baselinePivot,
                             'Cum Sum': baselineCumSum,
                             'Cum Per': baselineCumPer,
-                            'CLIN Per': baselineCLINDf}
+                            'CLIN Per': baselineClinDf}
     }
     
     return tables

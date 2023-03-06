@@ -17,7 +17,7 @@ def testIndexes(x, jira):
 
 def split_level(df, filterCondition, applyFunc, fillNA):
     """Function to split into levels by Summary""" 
-    featureDict = (df[filterCondition] [['Index', 'Summary']]
+    featureDict = (df[filterCondition][['Index', 'Summary']]
                      .set_index('Index')
                      .to_dict()['Summary'])
     newSeries = (df.Index.str.split('.').apply(applyFunc)
@@ -27,7 +27,7 @@ def split_level(df, filterCondition, applyFunc, fillNA):
 
 def split_level_key(df, filterCondition, applyFunc, fillNA):
     """Function to split into levels by Key""" 
-    featureDict = (df[filterCondition] [['Index', 'Key']]
+    featureDict = (df[filterCondition][['Index', 'Key']]
                      .set_index('Index')
                      .to_dict()['Key'])
     newSeries = (df.Index.str.split('.').apply(applyFunc)
@@ -43,7 +43,7 @@ def get_PILookup(df, PILookupDf, jira):
             PILookup[idx] = np.nan
         elif isinstance(date, (float, int)):
             print(f"Invalid PLanned Start Date: {date}. " \
-                  "Please check the {jira} Jira export file" \
+                  f"Please check the {jira} Jira export file" \
                   " for invalid dates. Now exiting...")    
             sys.exit()
         else: 
