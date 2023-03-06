@@ -400,6 +400,7 @@ class Pivot:
         numColsSum = self.pivotTable.shape[1]
         numColsCum = self.cumSum.shape[1]
         
+        lastColSum = letters[numColsSum]
         lastColCum = letters[numColsCum]
 
         cumSumStartRow = numEpics + 4
@@ -482,6 +483,21 @@ class Pivot:
                                         'criteria': '!=',
                                         'value': 0,
                                         'format': redFormat})
+        # Column widths and formats
+        catFormat = wb.add_format({'align': 'left',
+                                   'bold': False})
+        ws.set_column(0, 0, 60, catFormat)
+        ws.set_column(1, numColsSum, 10, catFormat)
+
+        # Merge and add headers
+        letters = string.ascii_uppercase
+        
+        ws.merge_range(f'A1:{lastColSum}1',
+                       'Sum of Story Points', titleFormat)
+        ws.merge_range(f'A{cumSumStartRow}:{lastColCum}{cumSumStartRow}',
+                       'Cumulative', titleFormat)
+        ws.merge_range(f'A{cumPerStartRow}:{lastColCum}{cumPerStartRow}',
+                       'Percentage', titleFormat)
     
     def format_keys(self, keys, format, ws):
         for row in range(self.JiraDf.shape[0]):
