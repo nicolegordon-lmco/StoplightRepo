@@ -21,6 +21,7 @@ class Pivot:
         self.clean_data()
         self.set_attributes()
         self.pivotTable = self.get_pivot()
+        return
     
     def clean_data(self):
         # Fill dates for start and end
@@ -29,6 +30,7 @@ class Pivot:
         self.JiraDf.loc[epic, 'Planned Start Date'] = pd.NaT
         self.JiraDf['Planned End Date'].fillna(method='pad', inplace=True)
         self.JiraDf.loc[epic, 'Planned End Date'] = pd.NaT
+        return
 
     def set_attributes(self, featureLevel=3):
         # Make sure all indexes are valid
@@ -131,6 +133,7 @@ class Pivot:
         self.JiraDf.loc[space,"Level"] = 'Portfolio'
         self.JiraDf.loc[team,"Level"] = 'Team'
         self.JiraDf.Level.fillna('ART', inplace=True)
+        return
 
     def get_pivot(self, df=None, slip=False):
         if df is None:
@@ -245,6 +248,7 @@ class Pivot:
         self.slipDf = slipDf
         self.slipPivotTable = self.get_pivot(df=self.slipDf, slip=True)
         self.pivotTable['Slip'] = self.slipPivotTable['Grand Total']
+        return
 
     def set_new(self, prevJiraDf, baselineDf):
         # Keys in each df
@@ -255,6 +259,7 @@ class Pivot:
         # New keys not in previous or baseline
         new = self.JiraDf[(~curKey.isin(prevKey) & ~curKey.isin(baseKey))]
         self.newDf = new
+        return
 
     def set_weekly_change(self, prevPivot):
         # Changes since last week
@@ -267,6 +272,7 @@ class Pivot:
         changesSinceLastWeek = changesSinceLastWeek.loc[self.epics, 
                                                         cols]
         self.changesWeek = changesSinceLastWeek
+        return
 
     def get_cumsum(self, pivot):
         return pivot.cumsum(axis=1)
@@ -327,6 +333,7 @@ class Pivot:
             CLINDf[clin] = clinPer
         CLINDf = CLINDf.transpose()
         self.clinDf = CLINDf
+        return
 
     def set_sprint_metrics(self, curSprint, lastCompleteSprint,
                             baselineCumSum, baselineCumPer):
@@ -387,6 +394,7 @@ class Pivot:
                                                 'Sprints Remaining': sprintsRem})
         self.sprintMetrics = sprintMetricsDf
         self.remainingSprintMetrics = remainingSprintMetrics
+        return
 
     def excel_pivot(self, writer):
         letters = string.ascii_uppercase
@@ -498,6 +506,7 @@ class Pivot:
                        'Cumulative', titleFormat)
         ws.merge_range(f'A{cumPerStartRow}:{lastColCum}{cumPerStartRow}',
                        'Percentage', titleFormat)
+        return
     
     def format_keys(self, keys, format, ws):
         for row in range(self.JiraDf.shape[0]):
@@ -506,6 +515,7 @@ class Pivot:
                 ws.conditional_format(f'B{row+2}', 
                                         {'type': 'no_errors',
                                         'format': format})
+        return
                 
     def excel_Jira(self, writer, cur=None):
         wb = writer.book
@@ -522,6 +532,8 @@ class Pivot:
             slipFormat = wb.add_format(formats['slipStories'])
             slipStories = cur.slipDf.Key.values
             self.format_keys(slipStories, slipFormat, ws)
+        
+        return
 
     @staticmethod
     def merge_baseline_cur(baseline, cur, overall=False):
@@ -569,6 +581,8 @@ class Pivot:
 
         self.changeBL = changeSinceBL
         self.stoplightData = stoplightData
+
+        return
         
 
     def create_stoplight_sheet(self, wb, clin):
