@@ -331,6 +331,7 @@ class Pivot:
     def set_sprint_metrics(self, curSprint, lastCompleteSprint,
                             baselineCumSum, baselineCumPer):
         # Set last complete sprint
+        self.curSprint = curSprint
         self.lastCompleteSprint = lastCompleteSprint
 
         # Current total (Points in sprint plus slip)
@@ -509,4 +510,161 @@ class Pivot:
             self.format_keysformat_keys(slipStories, slipFormat, ws)
         wb.close()
 
+@staticmethod
+def merge_baseline_cur(baseline, cur, overall=False):
+    # Merge baseline and current
+    df = pd.merge(baseline, cur, left_index=True, right_index=True, 
+                  suffixes=('_BL', '_Cur'))
+    # Sort columns
+    df = df.reindex(sorted(df.columns), axis=1)
+    # Rename overall index
+    if overall:
+        df.rename(index={df.index[0]:'Overall'}, inplace=True)
+    return df
+
+def set_stoplight_data(self, baseline, clin):
+    baselinePer = self.get_clin(baseline.cumPer, clin)
+    curPer = self.get_clin(self.cumPer, clin)
+    baselineTot = self.get_clin(baseline.clinDf, clin)
+    curTot = self.get_clin(self.clinDf, clin)
+
+    sprintsEpics = merge_baseline_cur(baselinePer, curPer)
+    sprintsTot = merge_baseline_cur(baselineTot, curTot, overall=True)
+
+    sprintsData = pd.concat((sprintsEpics, sprintsTot))
     
+    pointsEpics = self.get_clin(self.sprintMetrics, clin)
+    pointsTot = pd.DataFrame({'Overall': pointsEpics.sum()}).transpose()
+    pointsData = pd.concat((pointsEpics, pointsTot))
+
+    remEpics = self.get_clin(self.remainingSprintMetrics, clin)
+    remTot = (pd.DataFrame({'Overall': [np.nan] * remEpics.shape[1]})
+            .transpose().rename(columns={0: remEpics.columns[0],
+                                            1: remEpics.columns[1],
+                                            2: remEpics.columns[2]}))
+    remData = pd.concat((remEpics, remTot))
+
+    pointsData = pd.concat((pointsData, remData), axis=1)
+    
+    stoplightData = pd.concat((sprintsData, pointsData), axis=1)
+    
+    for idx in stoplightData.index:
+        stoplightData.rename(index={idx:idx.split(': ')[-1]}, inplace=True)
+        
+    changeSinceBL = stoplightData[['Change Since BL']].copy()
+    stoplightData.drop(columns='Change Since BL', inplace=True)
+
+    self.changeBL = changeSinceBL
+    self.stoplightData = stoplightData
+    
+
+def create_stoplight_sheet(self, wb, clin):
+    letters = string.ascii_uppercase
+    stoplightData = self.stoplightDict[clin]['Data'].copy()
+    stoplightChange = self.stoplightDict[clin]['Change_BL'].copy()
+    PISprintCompleted = f"{stoplightData.columns[(self.lastCompleteSprint-1) * 2][:4]}.{self.lastCompleteSprint}"
+    stoplightNumCols = stoplightData.shape[1]
+
+    for idx in stoplightData.index:
+        change = stoplightChange.loc[idx, 'Change Since BL']
+        if change > 0:
+            stoplightData.loc[idx, 'Current Total Pts'] = f"{stoplightData.loc[idx, 'Current Total Pts']} (+{int(change)})"
+        elif change < 0:
+            stoplightData.loc[idx, 'Current Total Pts'] = f"{stoplightData.loc[idx, 'Current Total Pts']} ({int(change)})"
+
+    ws = wb.add_worksheet(f'{clin} Stoplight')
+
+    # Merge cells for headers
+    mergedHeaders = ['A1:A1', 'B1:C1', 'D1:E1', 'F1:G1',
+                      'H1:I1', 'J1:K1', 'L1:M1', 'N1:N1', 'O1:R1',
+                        f'S1:{letters[stoplightNumCols]}1']
+    for cellRange in mergedHeaders:
+        if cellRange[0] != cellRange[3]:
+            ws.merge_range(cellRange, '')
+
+    # Write and format headers
+    headerFormat = wb.add_format(formats['header'])
+    
+    headers = ['CLIN 2013',
+               'Sprint 1', 'Sprint 2', 'Sprint 3', 
+               'Sprint 4', 'Sprint 5', 'Sprint 6 (Planning Sprint)',
+               'Current Total Pts (Change Since PI Planning)',
+              f'Points Analysis (End Sprint {PISprintCompleted})',
+              f'Assumed Velocity Forcast (End Sprint {PISprintCompleted}']
+
+    for idx, header in zip(mergedHeaders, headers):
+        ws.write(idx, header, headerFormat)
+
+    # Write and format subheaders
+    subheaderFormat = wb.add_format(formats['subheader'])
+    for col in range(1,13):
+        if col % 2 == 1:
+            subheader = 'Baseline'
+        else:
+            if (col/2) <= self.curSprint:
+                subheader = 'Actual'
+            else:
+                subheader = 'Projected'
+        ws.write(1, col, subheader, subheaderFormat)
+
+    extraSubheaders = stoplightData.columns[12:] # Anything after sprint 1-6 data
+    for col in range(13,stoplightNumCols+1):
+        ws.write(1, col, extraSubheaders[col-13], subheaderFormat)
+
+    # Column widths
+    # ws.set_column(start_col, end_col, width) (columns are 0 indexed)
+    ws.set_column(1, stoplightNumCols, 10) # default
+    ws.set_column(0, 0, 30) # clin categories
+    ws.set_column(13, 13, 18) # current total
+    ws.set_column(14, stoplightNumCols, 12) # point metrics
+
+    # Add epics
+    epicFormat = wb.add_format(formats['epic'])
+    numRows = stoplightData.index.shape[0]
+    for i in range(numRows):
+        ws.write(f'A{i+3}', stoplightData.index[i], epicFormat)
+
+    # Add stoplight data
+    dataFormatNumDelta = wb.add_format(formats['SLNumDelta'])
+    dataFormatNum = wb.add_format(formats['SLNum'])
+    dataFormatDec = wb.add_format(formats['SLDec'])
+    dataFormatPer = wb.add_format(formats['SLPer'])
+    dataFormatGreen = wb.add_format(formats['SLGreen'])
+    dataFormatYellow = wb.add_format(formats['SLYellow'])
+    dataFormatRed = wb.add_format(formats['SLRed'])
+    dataFormatBlue = wb.add_format(formats['SLBlue'])
+
+    for i in range(numRows):
+        for col in range(1,stoplightNumCols+1):
+            cellData = stoplightData.iloc[i, col-1]
+            # Sprints 1-6
+            if col in range(1,13):
+                # Col is <= current sprint and is actual/projected
+                if (col <= self.curSprint*2) & (col % 2 == 0):
+                    corrBLData = stoplightData.iloc[i, col-2]
+                    diff = cellData - corrBLData
+                    # On track/ahead
+                    if diff > -0.05:
+                        dataFormat = dataFormatGreen
+                    # Slightly off track
+                    if (diff <= -0.05) & (diff > -0.1):
+                        dataFormat = dataFormatYellow
+                    # Off track
+                    if (diff <= -0.1):
+                        dataFormat = dataFormatRed
+                else:  
+                    dataFormat = dataFormatPer
+            # Points metrics
+            elif col == 13:
+                dataFormat = dataFormatNumDelta
+            elif col == stoplightNumCols:
+                dataFormat = dataFormatDec
+            else:
+                dataFormat = dataFormatNum
+            # If a nan, write empty cell
+            try:
+                ws.write(i+2, col, cellData, dataFormat)
+            except:
+                ws.write(i+2, col, "", dataFormat)
+            
+    return
