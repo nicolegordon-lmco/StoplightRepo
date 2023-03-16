@@ -23,6 +23,7 @@ def main(curSprint, lastCompleteSprint, PI,
             'ACE-1 CLIN 2013: Resource Deconf. (RD) / Resource Viewer (RV)',
             'ACE-1 CLIN 2016: CSS HW Engineering',
             'ACE-1 CLIN 2016: ESS Solution',
+            'ACE-1 CLIN 2016: Multi-Factor Authentication (MFA) Solution',
             'ACE-1 CLIN 2016: SEIT',
             'ACE-1 CLIN 2016: SIEM and IDS',
             'ACE-1 CLIN 2018: CAMD',
@@ -36,10 +37,10 @@ def main(curSprint, lastCompleteSprint, PI,
     clinPattern = re.compile("CLIN \d{4}")
     clins = sorted(list(set([re.search(clinPattern, epic).group() for epic in epics])))
 
-    # Instantiate pivots fro current, previous, baseline weeks
-    cur = Pivot(newJiraFile, PILookupFile, epics, clins, PI, jira="Current")
-    prev = Pivot(prevJiraFile, PILookupFile, epics, clins, PI, jira="Previous")
-    baseline = Pivot(baseJiraFile, PILookupFile, epics, clins, PI, jira="Baseline")
+    # Instantiate pivots from current, previous, baseline weeks
+    cur = Pivot(newJiraFile, PILookupFile, epics, clins, PI, jira="Current", stoplightDir=stoplightDir)
+    prev = Pivot(prevJiraFile, PILookupFile, epics, clins, PI, jira="Previous", stoplightDir=stoplightDir)
+    baseline = Pivot(baseJiraFile, PILookupFile, epics, clins, PI, jira="Baseline", stoplightDir=stoplightDir)
 
     # Set slips
     cur.set_slip(prev.JiraDf, baseline.JiraDf)
