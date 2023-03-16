@@ -8,6 +8,10 @@ import string
 from format import formats
 
 class Pivot:
+    def exit(self):
+        if os.path.exists(self.stoplightDir):
+            shutil.rmtree(self.stoplightDir)
+        sys.exit()
     def __init__(self, jiraFile, PILookupFile, epics, clins, PI, jira, stoplightDir):
         self.JiraDf = pd.read_excel(jiraFile, usecols='A:P')
         self.stoplightDir = stoplightDir
@@ -256,13 +260,15 @@ class Pivot:
 
         # Start slip df with slips from previous Jira df
         slipDf = prevSlip.copy()
+        slipDf['Slipped From'] = 'Previous'
         # Add in slips from the baseline
         for idx in baseSlip.index:
             if baseSlip.loc[idx, 'Key'] in prevSlip.Key.values:
                 continue
             else:
-                slipDf = pd.concat((slipDf, 
-                                    pd.DataFrame(baseSlip.loc[idx]).transpose()), 
+                newSlip = pd.DataFrame(baseSlip.loc[idx]).transpose()
+                newSlip['Slipped From'] = 'Baseline'
+                slipDf = pd.concat((slipDf, newSlip), 
                                     ignore_index=True)
         self.slipDf = slipDf
         self.slipPivotTable = self.get_pivot(df=self.slipDf)
@@ -554,7 +560,7 @@ class Pivot:
             self.format_keys(newStories, newFormat, ws)
         else:
             slipFormat = wb.add_format(formats['slipStories'])
-            slipStories = cur.slipDf.Key.values
+            slipStories = cur.slipDf[cur.slipDf['Slipped From'] == self.jira].Key.values
             self.format_keys(slipStories, slipFormat, ws)
         
         return
