@@ -5,6 +5,8 @@ import datetime as dt
 import xlsxwriter
 import argparse
 from PivotClass import Pivot
+import sys
+import shutil
 
 def main(curSprint, lastCompleteSprint, PI,
         newJiraFile, prevJiraFile, baseJiraFile, 

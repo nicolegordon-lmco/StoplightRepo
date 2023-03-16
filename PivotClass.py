@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import sys
 import re
+import shutil
 import os
 import string
 from format import formats
@@ -16,7 +17,7 @@ class Pivot:
             print(f"{jira} Jira file is empty. Please check the export file. " \
                     "Now exiting...")
             if os.path.exists(self.stoplightDir):
-                os.removedirs(self.stoplightDir)
+                shutil.rmtree(self.stoplightDir)
             sys.exit()
         self.PILookupDf = pd.read_excel(PILookupFile, 
                                         sheet_name = 'PI Lookup', 
@@ -189,7 +190,7 @@ class Pivot:
                 "export file for missing or extra rows and rerun. " \
                     "Now exiting...")
             if os.path.exists(self.stoplightDir):
-                os.removedirs(self.stoplightDir)
+                shutil.rmtree(self.stoplightDir)
             sys.exit()
 
     def split_level(self, df, filterCondition, applyFunc, fillNA, split_by='Summary'):
@@ -213,7 +214,7 @@ class Pivot:
                     f"Please check the {self.jira} Jira export file" \
                     " for invalid dates. Now exiting...")   
                 if os.path.exists(self.stoplightDir):
-                    os.removedirs(self.stoplightDir) 
+                    shutil.rmtree(self.stoplightDir) 
                 sys.exit()
             else: 
                 for i in self.PILookupDf.index:
@@ -239,8 +240,13 @@ class Pivot:
         return string[match_idx+7:]
     
     def set_slip(self, prevJiraDf, baselineDf):
+        # Only consider current PI stories
+        curDf = self.JiraDf[(self.JiraDf.PI == f"PI {self.PI}")]
+        prevJiraDf = prevJiraDf[(prevJiraDf.PI == f"PI {self.PI}")]
+        baselineDf = baselineDf[(baselineDf.PI == f"PI {self.PI}")]
+
         # Keys in each df
-        curKey = self.JiraDf.Key
+        curKey = curDf.Key
         prevKey = prevJiraDf.Key
         baseKey = baselineDf.Key
 
@@ -264,13 +270,18 @@ class Pivot:
         return
 
     def set_new(self, prevJiraDf, baselineDf):
+        # Only consider current PI stories
+        curDf = self.JiraDf[(self.JiraDf.PI == f"PI {self.PI}")]
+        prevJiraDf = prevJiraDf[(prevJiraDf.PI == f"PI {self.PI}")]
+        baselineDf = baselineDf[(baselineDf.PI == f"PI {self.PI}")]
+
         # Keys in each df
-        curKey = self.JiraDf.Key
+        curKey = curDf.Key
         prevKey = prevJiraDf.Key
         baseKey = baselineDf.Key
 
         # New keys not in previous or baseline
-        new = self.JiraDf[(~curKey.isin(prevKey) & ~curKey.isin(baseKey))]
+        new = curDf[(~curKey.isin(prevKey) & ~curKey.isin(baseKey))]
         self.newDf = new
         return
 
@@ -281,7 +292,7 @@ class Pivot:
         cols = (changesSinceLastWeek.columns.to_series()
                 .apply(self.get_PI_sprint, args=(pattern,))
                 .dropna().values)
-        cols = np.append(cols, ['Slip', 'Grand Total'])
+        cols = np.append(cols, ['Grand Total'])
         changesSinceLastWeek = changesSinceLastWeek.loc[self.epics, 
                                                         cols]
         self.changesWeek = changesSinceLastWeek
