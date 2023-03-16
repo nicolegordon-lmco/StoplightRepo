@@ -2,12 +2,22 @@ import pandas as pd
 import numpy as np
 import sys
 import re
+import os
 import string
 from format import formats
 
 class Pivot:
-    def __init__(self, jiraFile, PILookupFile, epics, clins, PI, jira):
+    def __init__(self, jiraFile, PILookupFile, epics, clins, PI, jira, stoplightDir):
         self.JiraDf = pd.read_excel(jiraFile, usecols='A:P')
+        self.stoplightDir = stoplightDir
+
+        # Check if Jira file is empty. If yes, quit
+        if self.JiraDf.size == 0:
+            print(f"{jira} Jira file is empty. Please check the export file. " \
+                    "Now exiting...")
+            if os.path.exists(self.stoplightDir):
+                os.removedirs(self.stoplightDir)
+            sys.exit()
         self.PILookupDf = pd.read_excel(PILookupFile, 
                                         sheet_name = 'PI Lookup', 
                                         parse_dates=['Start', 'End'])
@@ -135,7 +145,7 @@ class Pivot:
         self.JiraDf.Level.fillna('ART', inplace=True)
         return
 
-    def get_pivot(self, df=None, slip=False):
+    def get_pivot(self, df=None):
         if df is None:
             df = self.JiraDf
         # Filters 
@@ -163,11 +173,10 @@ class Pivot:
                                                 margins=True,
                                                 margins_name=marginsName)
 
-        # If slip pivot, need to add epics that don't have slip points
-        if slip:
-            for epic in self.epics:
-                if epic not in summaryPivot.index.values:
-                    summaryPivot.loc[epic] = 0
+        # Need to add epics that don't have slip points
+        for epic in self.epics:
+            if epic not in summaryPivot.index.values:
+                summaryPivot.loc[epic] = 0
 
         pivotOrder = self.epics + [marginsName]
         summaryPivot = summaryPivot.loc[pivotOrder, :].fillna(0)
@@ -179,6 +188,8 @@ class Pivot:
             print(f"Invalid Index: {x}. Please check the {self.jira} Jira " \
                 "export file for missing or extra rows and rerun. " \
                     "Now exiting...")
+            if os.path.exists(self.stoplightDir):
+                os.removedirs(self.stoplightDir)
             sys.exit()
 
     def split_level(self, df, filterCondition, applyFunc, fillNA, split_by='Summary'):
@@ -200,7 +211,9 @@ class Pivot:
             elif isinstance(date, (float, int)):
                 print(f"Invalid PLanned Start Date: {date}. " \
                     f"Please check the {self.jira} Jira export file" \
-                    " for invalid dates. Now exiting...")    
+                    " for invalid dates. Now exiting...")   
+                if os.path.exists(self.stoplightDir):
+                    os.removedirs(self.stoplightDir) 
                 sys.exit()
             else: 
                 for i in self.PILookupDf.index:
@@ -246,7 +259,7 @@ class Pivot:
                                     pd.DataFrame(baseSlip.loc[idx]).transpose()), 
                                     ignore_index=True)
         self.slipDf = slipDf
-        self.slipPivotTable = self.get_pivot(df=self.slipDf, slip=True)
+        self.slipPivotTable = self.get_pivot(df=self.slipDf)
         self.pivotTable['Slip'] = self.slipPivotTable['Grand Total']
         return
 
