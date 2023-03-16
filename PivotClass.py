@@ -260,17 +260,17 @@ class Pivot:
 
         # Start slip df with slips from previous Jira df
         slipDf = prevSlip.copy()
-        slipDf['Slipped From'] = 'Previous'
         # Add in slips from the baseline
         for idx in baseSlip.index:
             if baseSlip.loc[idx, 'Key'] in prevSlip.Key.values:
                 continue
             else:
-                newSlip = pd.DataFrame(baseSlip.loc[idx]).transpose()
-                newSlip['Slipped From'] = 'Baseline'
-                slipDf = pd.concat((slipDf, newSlip), 
+                slipDf = pd.concat((slipDf, 
+                                    pd.DataFrame(baseSlip.loc[idx]).transpose()), 
                                     ignore_index=True)
         self.slipDf = slipDf
+        self.slipDfPrev = prevSlip
+        self.slipDfBaseline = baseSlip
         self.slipPivotTable = self.get_pivot(df=self.slipDf)
         self.pivotTable['Slip'] = self.slipPivotTable['Grand Total']
         return
@@ -560,7 +560,10 @@ class Pivot:
             self.format_keys(newStories, newFormat, ws)
         else:
             slipFormat = wb.add_format(formats['slipStories'])
-            slipStories = cur.slipDf[cur.slipDf['Slipped From'] == self.jira].Key.values
+            if self.sheetJira == 'Previous Jira Export':
+                slipStories = cur.slipDfPrev.Key.values
+            else:
+                slipStories = cur.slipDfBaseline.Key.values
             self.format_keys(slipStories, slipFormat, ws)
         
         return
