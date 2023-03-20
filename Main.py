@@ -17,8 +17,25 @@ def main(curSprint, lastCompleteSprint, PI,
         
     # Get all data
     # Epics
-    epics = ['ACE-1 CLIN 2013: Maps', 
-             'ACE-1 CLIN 2013: Rapid Adaptive Planning (RAP)',
+    # epics = ['ACE-1 CLIN 2013: Maps', 
+    #          'ACE-1 CLIN 2013: Rapid Adaptive Planning (RAP)',
+    #         'ACE-1 CLIN 2013: RAPSAW SEIT',
+    #         'ACE-1 CLIN 2013: Resource Deconf. (RD) / Resource Viewer (RV)',
+    #         'ACE-1 CLIN 2016: CSS HW Engineering',
+    #         'ACE-1 CLIN 2016: ESS Solution',
+    #         'ACE-1 CLIN 2016: Multi-Factor Authentication (MFA) Solution',
+    #         'ACE-1 CLIN 2016: SEIT',
+    #         'ACE-1 CLIN 2016: SIEM and IDS',
+    #         'ACE-1 CLIN 2018: CAMD',
+    #         'ACE-1 CLIN 2018: CSS Extension',
+    #         'ACE-1 CLIN 2018: DevEnv Products',
+    #         'ACE-1 CLIN 2018: DevSecOps',
+    #         'ACE-1 CLIN 2018: EA SEIT',
+    #         'ACE-1 CLIN 2018: Enterprise Architecture HW Engineering'
+    #         ]
+    epics = [
+            'ACE-1 CLIN 2013: LAE BCB-1505',
+            'ACE-1 CLIN 2013: Rapid Adaptive Planning (RAP)',
             'ACE-1 CLIN 2013: RAPSAW SEIT',
             'ACE-1 CLIN 2013: Resource Deconf. (RD) / Resource Viewer (RV)',
             'ACE-1 CLIN 2016: CSS HW Engineering',
@@ -33,6 +50,7 @@ def main(curSprint, lastCompleteSprint, PI,
             'ACE-1 CLIN 2018: EA SEIT',
             'ACE-1 CLIN 2018: Enterprise Architecture HW Engineering'
             ]
+    
     # Clins
     clinPattern = re.compile("CLIN \d{4}")
     clins = sorted(list(set([re.search(clinPattern, epic).group() for epic in epics])))
@@ -148,6 +166,10 @@ if __name__ == "__main__":
                         help='INT: Last complete sprint number', 
                         type=int,
                         default=lastCompleteSprint)
+    parser.add_argument('--PI', 
+                        help='str: current PI', 
+                        type=str,
+                        default=PI)
     parser.add_argument('--PILookupFile', 
                         help='Path to PI Lookup file with dates for each PI', 
                         default=defaultPILookupFile)
@@ -161,7 +183,7 @@ if __name__ == "__main__":
 
     data = main(args.sprint, 
                 args.lastCompleteSprint, 
-                PI, 
+                args.PI, 
                 args.newJiraFile.strip('"'), 
                 args.prevJiraFile.strip('"'),
                 args.baseJiraFile.strip('"'),
