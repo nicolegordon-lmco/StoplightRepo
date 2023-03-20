@@ -380,18 +380,23 @@ class Pivot:
         baselineTotal = baselineCumSum.iloc[:, -1].values
         baselineChange = curTotal - baselineTotal
         
-        # Points expected
-        lastPattern = re.compile(fr'\d\d\.\d-S{lastCompleteSprint}')
-        col = (baselineCumPer.columns.to_series()
-            .apply(self.get_PI_sprint, args=(lastPattern,))
-            .dropna().values[0])
-        pointsExpected = (baselineCumPer.loc[self.epics, col] * curTotal)
+        # Points expected and comnpleted 
+        if lastCompleteSprint == 0:
+            pointsExpected = pd.Series(data=len(self.epics) * [0], index=self.epics)
+            pointsCompleted = pd.Series(data=len(self.epics) * [0], index=self.epics)
+        else:
+            # Points expected
+            lastPattern = re.compile(fr'\d\d\.\d-S{lastCompleteSprint}')
+            col = (baselineCumPer.columns.to_series()
+                .apply(self.get_PI_sprint, args=(lastPattern,))
+                .dropna().values[0])
+            pointsExpected = (baselineCumPer.loc[self.epics, col] * curTotal)
         
-        # Points completed
-        col = (self.cumSum.columns.to_series()
-            .apply(self.get_PI_sprint, args=(lastPattern,))
-            .dropna().values[0])
-        pointsCompleted = self.cumSum.loc[self.epics, col]
+            # Points completed
+            col = (self.cumSum.columns.to_series()
+                .apply(self.get_PI_sprint, args=(lastPattern,))
+                .dropna().values[0])
+            pointsCompleted = self.cumSum.loc[self.epics, col]
 
         # Current completed
         curPattern = re.compile(fr'\d\d\.\d-S{curSprint}')
