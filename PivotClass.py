@@ -164,6 +164,7 @@ class Pivot:
         # Pivot table
         dfFiltered = df.copy()
         dfFiltered = dfFiltered[filters]
+        self.pivotDf = dfFiltered
         marginsName = 'Grand Total'
 
         # If no stories have slipped, add row of 0s to prevent error
