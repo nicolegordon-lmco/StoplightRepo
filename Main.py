@@ -8,7 +8,8 @@ from PivotClass import Pivot
 
 def main(curSprint, lastCompleteSprint, PI,
         newJiraFile, prevJiraFile, baseJiraFile, 
-        stoplightWdir, PILookupFile):
+        stoplightWdir, PILookupFile,
+        printContributors):
     # Directory where two excel files will be output
     stoplightDir = os.path.join(stoplightWdir, 
                                 f'Stoplight_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}')
@@ -59,6 +60,10 @@ def main(curSprint, lastCompleteSprint, PI,
     cur = Pivot(newJiraFile, PILookupFile, epics, clins, PI, jira="Current", stoplightDir=stoplightDir)
     prev = Pivot(prevJiraFile, PILookupFile, epics, clins, PI, jira="Previous", stoplightDir=stoplightDir)
     baseline = Pivot(baseJiraFile, PILookupFile, epics, clins, PI, jira="Baseline", stoplightDir=stoplightDir)
+
+    if printContributors is not None:
+        for pivot in [cur, prev, baseline]:
+            pivot.pivotDf.to_excel(os.path.join(stoplightDir, f"{pivot.jira}Contributors.xlsx"), index=False)
 
     # Set slips
     cur.set_slip(prev.JiraDf, baseline.JiraDf)
@@ -176,6 +181,9 @@ if __name__ == "__main__":
     parser.add_argument('--stoplightWdir', 
                         help='Working directory where Stoplight files will be output', 
                         default=defaultStoplightWdir)
+    parser.add_argument('--printContributors', 
+                        help='Flag to print items that contributed to the pivots', 
+                        action=argparse.BooleanOptionalAction)
     args= parser.parse_args()
 
     # Command to run
@@ -188,4 +196,5 @@ if __name__ == "__main__":
                 args.prevJiraFile.strip('"'),
                 args.baseJiraFile.strip('"'),
                 args.stoplightWdir.strip('"'), 
-                args.PILookupFile.strip('"'))
+                args.PILookupFile.strip('"'),
+                args.printContributors)
