@@ -85,6 +85,7 @@ class Pivot:
                                                             lambda x: '.'.join(x[:2]), 
                                                             np.nan,
                                                             split_by='Key')})
+        
         idCapabilityFill = self.split_level(idCapabilityTemp, 
                                             self.JiraDf.Key.apply(lambda x: x[:9]) == "pcmCoolr", 
                                             lambda x: x[0], 
@@ -125,10 +126,20 @@ class Pivot:
         self.JiraDf.loc[backlog, 'PI'] = ['Backlog'] * backlog.sum()
         self.JiraDf['PI'].fillna(self.JiraDf['PI Lookup'], inplace=True)
 
+        featurePI = self.split_level(self.JiraDf, 
+                                    self.JiraDf['Issue Type'] == 'Feature', 
+                                    lambda x: '.'.join(x[:3]), 
+                                    np.nan,
+                                    split_by='PI')
+        storyBeforeFeature = (self.JiraDf['PI'] < featurePI)
+        notBacklog = (self.JiraDf['PI'] != "Backlog")
+        self.JiraDf.loc[storyBeforeFeature & notBacklog, 'PI'] = featurePI[storyBeforeFeature & notBacklog]
+
         # Sprint Num
         pattern = re.compile(r"PI \d{2}\.\d - S\d")
         self.JiraDf['Sprint Num'] = self.JiraDf.Sprint.apply(self.get_PI_sprint, 
                                                             args=(pattern, False,))
+        self.JiraDf.loc[storyBeforeFeature & notBacklog, 'Sprint Num'] = np.nan
 
         # PI-Sprint
         pattern = re.compile(r"\d{2}\.\d")
