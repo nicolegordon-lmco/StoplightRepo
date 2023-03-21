@@ -4,12 +4,14 @@ import pandas as pd
 import datetime as dt
 import xlsxwriter
 import argparse
+import sys
 from PivotClass import Pivot
 
 def main(curSprint, lastCompleteSprint, PI,
         newJiraFile, prevJiraFile, baseJiraFile, 
         stoplightWdir, PILookupFile,
         printContributors):
+
     # Directory where two excel files will be output
     stoplightDir = os.path.join(stoplightWdir, 
                                 f'Stoplight_{dt.datetime.now().strftime("%y%m%d_%H%M%S")}')
@@ -115,7 +117,6 @@ def main(curSprint, lastCompleteSprint, PI,
         cur.create_stoplight_sheet(wb, clin)
     wb.close()
 
-
 if __name__ == "__main__":
     # File that contains dates of sprints
     defaultPILookupFile = r"C:\Users\e439931\PMO\Stoplight\PI_Lookup.xlsx"
@@ -123,16 +124,11 @@ if __name__ == "__main__":
     # Directory where stoplight files will be output
     defaultStoplightWdir = r'C:\Users\e439931\PMO\Stoplight\Stoplights'
 
-    # Get last completed sprint
+    # sprint info
     sprintFile = r"C:\Users\e439931\PMO\Stoplight\Sprints.xlsx"
     sprints = pd.read_excel(sprintFile, header=0)
     today = dt.datetime.today()
-    PISprint = sprints[(today > sprints.End)].iloc[-1].Sprint
-    lastCompleteSprint = PISprint.split('.')[-1]
-    if lastCompleteSprint == "IP":
-        lastCompleteSprint = 6
-    PI = '.'.join(PISprint.split('.')[:2])
-
+    
     # Get current sprint
     # get most recent tuesday
     today = dt.datetime.strptime(dt.datetime.today().date().strftime('%Y-%m-%d %H:%M:%S'), 
@@ -149,6 +145,19 @@ if __name__ == "__main__":
     curSprint = PISprint.split('.')[-1]
     if curSprint == "IP":
         curSprint = 6
+
+    # Get last completed sprint
+    PISprint = sprints[(today > sprints.End)].iloc[-1].Sprint
+    if curSprint == 1:
+        lastCompleteSprint = 0
+    else:
+        lastCompleteSprint = PISprint.split('.')[-1]
+        if lastCompleteSprint == "IP":
+            lastCompleteSprint = 6
+    
+    curSprint = int(curSprint)
+    lastCompleteSprint = int(lastCompleteSprint)
+    PI = '.'.join(PISprint.split('.')[:2])
 
     description = ("A script that takes in the sprint number and the "
                    + "current, previous, and baseline Jira exports "
@@ -184,10 +193,13 @@ if __name__ == "__main__":
     parser.add_argument('--printContributors', 
                         help='Flag to print items that contributed to the pivots', 
                         action=argparse.BooleanOptionalAction)
-    args= parser.parse_args()
-
-    # Command to run
-    # python Main.py C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Cur.xlsx C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Prev.xlsx C:\Users\e439931\PMO\Stoplight\Roadmaps\COOLR_ACE_1_Roadmap_230223_Baseline.xlsx 
+    args = parser.parse_args()
+    
+    # Check if --sprint was input but --lastCompleteSprint was not
+    if ('--sprint' in ''.join(sys.argv)) & ('--lastCompleteSprint' not in ''.join(sys.argv)):
+        print("--sprint was input but --lastCompleteSprint was not. \
+              \nIf --sprint is input, --lastCompleteSprint must also be input. Now exiting...")
+        sys.exit()
 
     data = main(args.sprint, 
                 args.lastCompleteSprint, 
