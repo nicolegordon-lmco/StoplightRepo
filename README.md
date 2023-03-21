@@ -5,7 +5,7 @@ Scripts to automate the creation of the Stoplight pivot tables and Stoplight gra
 The main script is Stoplight.py. This is what is run to create the output. The format to run the script is
 "python Stoplight.py pathToCurrentJiraExport pathToPreviousJiraExport pathToBaslineJiraExport" 
 
-The optional flags are
+The optional flags are  
     --sprint: int
         Current sprint number. The default is the sprint number found based on the most recent Tuesday's date.
         If --sprint is used, --lastCompleteSprint must be input, too.
