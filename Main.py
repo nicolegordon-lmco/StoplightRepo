@@ -119,13 +119,13 @@ def main(curSprint, lastCompleteSprint, PI,
 
 if __name__ == "__main__":
     # File that contains dates of sprints
-    defaultPILookupFile = r"C:\Users\e439931\PMO\Stoplight\PI_Lookup.xlsx"
+    defaultPILookupFile = r"\\us.lmco.com\sscdfs\Deptdisk\v\vf_aehf\ACE-1 Execution\Stoplight Data Snapshots\Script\PI_Lookup.xlsx"
 
     # Directory where stoplight files will be output
-    defaultStoplightWdir = r'C:\Users\e439931\PMO\Stoplight\Stoplights'
+    defaultStoplightWdir = r"\\us.lmco.com\sscdfs\Deptdisk\v\vf_aehf\ACE-1 Execution\Stoplight Data Snapshots\Script\Stoplights"
 
-    # sprint info
-    sprintFile = r"C:\Users\e439931\PMO\Stoplight\Sprints.xlsx"
+    # Get last completed sprint
+    sprintFile = r"\\us.lmco.com\sscdfs\Deptdisk\v\vf_aehf\ACE-1 Execution\Stoplight Data Snapshots\Script\Sprints.xlsx"
     sprints = pd.read_excel(sprintFile, header=0)
     today = dt.datetime.today()
     
