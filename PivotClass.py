@@ -310,6 +310,7 @@ class Pivot:
         cols = (changesSinceLastWeek.columns.to_series()
                 .apply(self.get_PI_sprint, args=(pattern,))
                 .dropna().values)
+        changesSinceLastWeek.loc[self.epics, 'Grand Total'] = changesSinceLastWeek.loc[self.epics,cols].sum(axis=1)
         cols = np.append(cols, ['Grand Total'])
         changesSinceLastWeek = changesSinceLastWeek.loc[self.epics, 
                                                         cols]
@@ -522,9 +523,9 @@ class Pivot:
                 lastColChange = letters[numColsSum+2+numColsChange]
                 # Changes since last week
                 self.changesWeek.to_excel(writer, 
-                                                                sheet_name=self.sheetPivot, 
-                                                                startrow=1 , 
-                                                                startcol=numColsSum+2)  
+                                        sheet_name=self.sheetPivot, 
+                                        startrow=1 , 
+                                        startcol=numColsSum+2)  
                 
                 # Add header
                 ws.merge_range(f'{firstColChange}1:{lastColChange}1',
